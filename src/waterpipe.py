@@ -558,6 +558,8 @@ def plot_winds(cubes, level=14, wpharm=False, omega=0.64617667):
     X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
     fig = plt.figure(figsize = (12, 7)) 
     strm = plt.streamplot(X, Y, np.roll(x_wind[-1,level,:,:].data, 72, axis=1), np.roll(y_wind[-1,level,:,:].data, 72, axis=1), density = 0.5, color=np.roll(speed[-1,level,:,:].data, 72, axis=1), cmap=brewer_reds)
+    # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
+    # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
     fig.colorbar(strm.lines)
     plt.title('Wind speed and direction [m s-1], h=%s km' %(level+1))
     plt.xlabel('Longitude')
@@ -603,7 +605,10 @@ def plot_winds(cubes, level=14, wpharm=False, omega=0.64617667):
 
 def plot_vapour(cubes):
     
-    """ Plot vapour fluxes """
+    """ Plot zonal vapour flux
+        Plot meridional vapour flux
+        Plot upward vapour flux
+        Plot streamplot of 2-D vapour fluxes """
     
     for cube in cubes:
         if cube.long_name == 'water_vapour_flux_x':
@@ -639,6 +644,8 @@ def plot_vapour(cubes):
     X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
     fig = plt.figure(figsize = (12, 7)) 
     strm = plt.streamplot(X, Y, np.roll(x_vapour[-1,:,:].data, 72, axis=1), np.roll(y_vapour[-1,:,:].data, 72, axis=1), density = 0.5, color=np.roll(magnitude[-1,:,:].data, 72, axis=1), cmap=brewer_bg)
+    # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
+    # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
     fig.colorbar(strm.lines)
     plt.title('Vapour flux magnitude and direction [kg m-2 s-1]')
     plt.xlabel('Longitude')
