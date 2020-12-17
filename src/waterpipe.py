@@ -4,7 +4,8 @@ Created on Tue Nov  3 14:54:07 2020
 
 @author: Mo Cohen
 
-Pipeline for post-processing UM output data
+Pipeline for post-processing UM output data.
+- Analyses model data and outputs plots and calculated data
 
 Model: University of Exeter Stand Alone model of Proxima Centauri b, UM vn11.8
 
@@ -25,7 +26,7 @@ brewer_red = mpl_cm.get_cmap('brewer_YlOrRd_09')
 brewer_bg = mpl_cm.get_cmap('brewer_PuBu_09')
 brewer_reds = mpl_cm.get_cmap('brewer_Reds_09')
 brewer_redblu = mpl_cm.get_cmap('brewer_RdBu_11')
-#Load colormaps to use in plots
+# Load colormaps to use in plots
 
 # Block 1: Data management
 
@@ -110,7 +111,7 @@ def check_difference(cubes1, cubes2):
 
 # Block 2: Plotting functions
 
-def plot_temperature(cubes):
+def plot_temperature(cubes, time_slice=-1):
     
     """ Plot mean surface temperature from final output data dump
         Plot development of average daily surface temperature over time:
@@ -121,7 +122,7 @@ def plot_temperature(cubes):
             if len(cube.cell_methods) != 0 and cube.cell_methods[0].method == 'mean':
             # Extract mean surface temperature from CubeList
                 
-                iplt.contourf(cube[-1,:,:], brewer_red.N, cmap=brewer_red)
+                iplt.contourf(cube[time_slice,:,:], brewer_red.N, cmap=brewer_red)
                 ax = plt.gca()
                 ax.gridlines(draw_labels=True)
                 plt.title('Mean Surface Temp [K]', y=1.20)
@@ -166,7 +167,7 @@ def plot_temperature(cubes):
                 plt.show()
                 
 
-def plot_temp_profile(cubes):
+def plot_temp_profile(cubes, time_slice=-1):
     
     """ Plot temperature profile with height at substellar point
         Plot temperature profile with height at antistellar point
@@ -187,19 +188,19 @@ def plot_temp_profile(cubes):
     p0.convert_units(air_pressure.units)
     absolute_temp = potential_temp*((air_pressure/p0)**(287.05/1005))
     
-    plt.plot(absolute_temp[-1,:,0,0].data, np.arange(0,39))
+    plt.plot(absolute_temp[time_slice,:,0,0].data, np.arange(0,39))
     plt.title('Temperature Profile at Substellar Point')
     plt.xlabel('Temperature [K]')
     plt.ylabel('Height [km]')
     plt.show()
     
-    plt.plot(absolute_temp[-1,:,0,72].data, np.arange(0,39))
+    plt.plot(absolute_temp[time_slice,:,0,72].data, np.arange(0,39))
     plt.title('Temperature Profile at Antistellar Point')
     plt.xlabel('Temperature [K]')
     plt.ylabel('Height [km]')
     plt.show()
     
-    iplt.contourf(air_temp_bl[-1,:,:], brewer_red.N, cmap=brewer_red)
+    iplt.contourf(air_temp_bl[time_slice,:,:], brewer_red.N, cmap=brewer_red)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.title('Air Temp at 1.5 m [K]', y=1.20)
@@ -211,7 +212,7 @@ def plot_temp_profile(cubes):
     return absolute_temp
                 
         
-def plot_radiation(cubes):
+def plot_radiation(cubes, time_slice=-1):
     
     """ Plot radiation balance at top of atmosphere over time
         Plot surface net shortwave flux from final output data dump """
@@ -239,7 +240,7 @@ def plot_radiation(cubes):
     plt.title('Radiation balance')
     plt.show() 
   
-    iplt.contourf(surface_sw_rad[-1,:,:], brewer_red.N, cmap=brewer_red)
+    iplt.contourf(surface_sw_rad[time_slice,:,:], brewer_red.N, cmap=brewer_red)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.title('Surface Net Downward Shortwave Flux [W m-2]', y=1.20)
@@ -249,7 +250,7 @@ def plot_radiation(cubes):
     plt.show()
 
 
-def plot_humidity(cubes):
+def plot_humidity(cubes, level=14, time_slice=-1):
     
     """ Plot dayside atmospheric humidity over time
         Plot nightside atmospheric humidity over time
@@ -310,27 +311,27 @@ def plot_humidity(cubes):
     # plt.title('Average Nightside Specific Humidity')
     # plt.show() 
     
-    plt.plot(spec_humidity[-1,:,0,0].data, np.arange(0,39))
+    plt.plot(spec_humidity[time_slice,:,0,0].data, np.arange(0,39))
     plt.title('Humidity Profile at Substellar Point')
     plt.xlabel('Specific Humidity [kg kg-1]')
     plt.ylabel('Height [km]')
     plt.show()
     
-    iplt.contourf(spec_humidity[-1,14,:,:], brewer_bg.N, cmap=brewer_bg)
+    iplt.contourf(spec_humidity[time_slice,14,:,:], brewer_bg.N, cmap=brewer_bg)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
-    plt.title('Specific Humidity at h=15 km [kg kg-1]', y=1.20)
+    plt.title('Specific Humidity at h=%s km [kg kg-1]'%(level+1), y=1.20)
     plt.colorbar(pad=0.1)
     plt.show()
     
-    iplt.contourf((spec_humidity[-1,:,:,36]+spec_humidity[-1,:,:,108])/2, brewer_bg.N, cmap=brewer_bg)
+    iplt.contourf((spec_humidity[time_slice,:,:,36]+spec_humidity[-1,:,:,108])/2, brewer_bg.N, cmap=brewer_bg)
     plt.title('Specific Humidity at Terminators, final day [kg kg-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude')
     plt.colorbar(pad=0.1)
     plt.show()
     
-    iplt.contourf(spec_humidity[-1,:,:,0], brewer_bg.N, cmap=brewer_bg)
+    iplt.contourf(spec_humidity[time_slice,:,:,0], brewer_bg.N, cmap=brewer_bg)
     plt.title('Specific Humidity at Longitude 0 [kg kg-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude')
@@ -338,7 +339,7 @@ def plot_humidity(cubes):
     plt.show()
 
 
-def plot_precipitation(cubes):
+def plot_precipitation(cubes, time_slice=-1):
     
     """ Plot dayside precipitation rate over time
         Plot nightside precipitation rate over time
@@ -371,7 +372,7 @@ def plot_precipitation(cubes):
     plt.title('Average Nightside Precipitation Flux')
     plt.show()  
     
-    iplt.contourf(precipitation[-1,:,:]*86400, brewer_bg.N, cmap=brewer_bg)
+    iplt.contourf(precipitation[time_slice,:,:]*86400, brewer_bg.N, cmap=brewer_bg)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.title('Mean Precipitation Flux [mm day-1]', y=1.20)
@@ -386,7 +387,7 @@ def plot_precipitation(cubes):
     return precipitation
     
 
-def plot_evaporation(cubes):
+def plot_evaporation(cubes, time_slice=-1):
     
     """ Plot surface evaporation 
         Calculated from surface latent heat flux 
@@ -401,7 +402,7 @@ def plot_evaporation(cubes):
     l_v = 2477300 #J/kg, latent heat of vaporisation of water at 283.15 K
     evaporation = (latent_heat/(density*l_v))*86400*1000 # Calculate evap and convert to mm/day
     
-    iplt.contourf(evaporation[-1,:,:], brewer_red.N, cmap=brewer_red)
+    iplt.contourf(evaporation[time_slice,:,:], brewer_red.N, cmap=brewer_red)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.title('Evaporation [mm day-1]', y=1.20)
@@ -415,7 +416,7 @@ def plot_evaporation(cubes):
     return evaporation
     
 
-def plot_clouds(cubes, periodicity=False):
+def plot_clouds(cubes, time_slice=-1, periodicity=False):
     
     """ Plot cloud area fraction for all longs/lats on final output data dump
         Plot cloud volume fraction at longitude 0, final output
@@ -440,21 +441,21 @@ def plot_clouds(cubes, periodicity=False):
         if cube.standard_name == 'mass_fraction_of_cloud_liquid_water_in_air':
             liquid_condensate = cube
     
-    iplt.contourf(cloud_cover[-1,:,:], brewer_bg.N, cmap=brewer_bg)
+    iplt.contourf(cloud_cover[time_slice,:,:], brewer_bg.N, cmap=brewer_bg)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.title('Cloud Area Fraction', y=1.20)
     plt.colorbar(pad=0.1)
     plt.show()
 
-    iplt.contourf(cloud_volume[-1,:,:,0], brewer_bg.N, cmap=brewer_bg)
+    iplt.contourf(cloud_volume[time_slice,:,:,0], brewer_bg.N, cmap=brewer_bg)
     plt.title('Cloud Volume Fraction at Longitude 0', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
     plt.colorbar(pad=0.1)
     plt.show()
     
-    iplt.contourf((cloud_volume[-1,:,:,36]+cloud_volume[-1,:,:,108])/2, brewer_bg.N, cmap=brewer_bg)
+    iplt.contourf((cloud_volume[time_slice,:,:,36]+cloud_volume[-1,:,:,108])/2, brewer_bg.N, cmap=brewer_bg)
     plt.title('Cloud Volume Fraction at Terminators [kg kg-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
@@ -524,7 +525,7 @@ def check_periodicity(data):
     ax.set_title('Periodicity in data')
     
 
-def plot_winds(cubes, level=14, wpharm=False, omega=0.64617667):
+def plot_winds(cubes, level=14, time_slice=-1, wpharm=False, omega=0.64617667):
     
     """ Inputs: Iris CubeList and model level you want to look at
         wpharm=True allows windspharm library to be used on Linux machines
@@ -548,7 +549,7 @@ def plot_winds(cubes, level=14, wpharm=False, omega=0.64617667):
    
     speed = iris.analysis.maths.apply_ufunc(np.sqrt, (x_wind**2 + y_wind**2))
     
-    iplt.contourf(x_wind[-1,level,:,:], brewer_reds.N, cmap=brewer_reds)
+    iplt.contourf(x_wind[time_slice,level,:,:], brewer_reds.N, cmap=brewer_reds)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.title('Zonal Wind Speed, h=%s km [m s-1]' %(level+1), y=1.20)
@@ -557,7 +558,7 @@ def plot_winds(cubes, level=14, wpharm=False, omega=0.64617667):
 
     X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
     fig = plt.figure(figsize = (12, 7)) 
-    strm = plt.streamplot(X, Y, np.roll(x_wind[-1,level,:,:].data, 72, axis=1), np.roll(y_wind[-1,level,:,:].data, 72, axis=1), density = 0.5, color=np.roll(speed[-1,level,:,:].data, 72, axis=1), cmap=brewer_reds)
+    strm = plt.streamplot(X, Y, np.roll(x_wind[time_slice,level,:,:].data, 72, axis=1), np.roll(y_wind[time_slice,level,:,:].data, 72, axis=1), density = 0.5, color=np.roll(speed[time_slice,level,:,:].data, 72, axis=1), cmap=brewer_reds)
     # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
     # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
     fig.colorbar(strm.lines)
@@ -570,7 +571,7 @@ def plot_winds(cubes, level=14, wpharm=False, omega=0.64617667):
         
     zonal_mean = x_wind.collapsed('longitude', iris.analysis.MEAN)
     
-    CS = iplt.contourf(zonal_mean[-1,:,:], brewer_redblu.N, cmap=brewer_redblu)
+    CS = iplt.contourf(zonal_mean[time_slice,:,:], brewer_redblu.N, cmap=brewer_redblu)
     plt.title('Zonal Mean Zonal Wind [m s-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
@@ -580,30 +581,31 @@ def plot_winds(cubes, level=14, wpharm=False, omega=0.64617667):
     
     if wpharm == True:
 
-        wind = windspharm.iris.VectorWind(x_wind, regridded_y)
+        wind = windspharm.iris.VectorWind(x_wind, y_wind)
         streamfunction, velpotential = wind.sfvp()
         clevs = [-200, -180, -160, -120, -100, -80, -60, -40, -20, 0, 40, 80, 120, 160, 200]
-        iplt.contourf(streamfunction[-1,15,:,:]*1e-06, clevs, cmap=brewer_redblu, extend='both')
+        iplt.contourf(streamfunction[time_slice,level,:,:]*1e-06, clevs, cmap=brewer_redblu, extend='both')
         ax = plt.gca()
         ax.gridlines(draw_labels=True)
         plt.colorbar(orientation='horizontal')
-        plt.title('Streamfunction [$10^6$ m2 s-1]')
+        plt.title('Streamfunction [$10^6$ m2 s-1], h = %s km' %(level+1), y=1.20)
+        plt.show()
 
         planet_vort = wind.planetaryvorticity(omega=omega)
         relative_vort = wind.vorticity()
         absolute_vort = wind.absolutevorticity()
         
-        iplt.contourf(relative_vort[-1,level,:,:], brewer_bg.N, cmap=brewer_bg)
+        iplt.contourf(relative_vort[time_slice,level,:,:], brewer_bg.N, cmap=brewer_bg)
         plt.title('Relative Vorticity, h = %s km' %(level+1), y=1.20)
         plt.ylabel('Latitude [degrees]')
         plt.xlabel('Longitude [degrees]')
         ax = plt.gca()
         ax.gridlines(draw_labels=True)
-        plt.colorbar(pad=0.1)
+        plt.colorbar(orientation='horizontal')
         plt.show()
 
 
-def plot_vapour(cubes):
+def plot_vapour(cubes, time_slice=-1):
     
     """ Plot zonal vapour flux
         Plot meridional vapour flux
@@ -618,21 +620,21 @@ def plot_vapour(cubes):
         if cube.long_name == 'water_vapour_flux_z':
             z_vapour = cube
     
-    iplt.contourf(x_vapour[-1,:,:], brewer_bg.N, cmap=brewer_bg)
+    iplt.contourf(x_vapour[time_slice,:,:], brewer_bg.N, cmap=brewer_bg)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.title('Zonal Vapour Flux [kg m-2 s-1]', y=1.20)
     plt.colorbar(pad=0.1)
     plt.show()
     
-    iplt.contourf(y_vapour[-1,:,:], brewer_bg.N, cmap=brewer_bg)
+    iplt.contourf(y_vapour[time_slice,:,:], brewer_bg.N, cmap=brewer_bg)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.title('Meridional Vapour Flux [kg m-2 s-1]', y=1.20)
     plt.colorbar(pad=0.1)
     plt.show()
     
-    iplt.contourf(z_vapour[-1,:,:], brewer_bg.N, cmap=brewer_bg)
+    iplt.contourf(z_vapour[time_slice,:,:], brewer_bg.N, cmap=brewer_bg)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.title('Upward Vapour Flux [kg m-2 s-1]', y=1.20)
@@ -643,7 +645,7 @@ def plot_vapour(cubes):
     
     X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
     fig = plt.figure(figsize = (12, 7)) 
-    strm = plt.streamplot(X, Y, np.roll(x_vapour[-1,:,:].data, 72, axis=1), np.roll(y_vapour[-1,:,:].data, 72, axis=1), density = 0.5, color=np.roll(magnitude[-1,:,:].data, 72, axis=1), cmap=brewer_bg)
+    strm = plt.streamplot(X, Y, np.roll(x_vapour[time_slice,:,:].data, 72, axis=1), np.roll(y_vapour[time_slice,:,:].data, 72, axis=1), density = 0.5, color=np.roll(magnitude[time_slice,:,:].data, 72, axis=1), cmap=brewer_bg)
     # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
     # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
     fig.colorbar(strm.lines)
