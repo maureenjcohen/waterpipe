@@ -34,7 +34,9 @@ def compare_standard(cubes1, cubes2, time_slice=-1):
         Compare standard 2D outputs of 30-day means from the UM:
         Mean surface temperature
         Mean precipitation flux
-        Mean downward SW flux at surface                    """
+        Mean downward SW flux at surface                    
+        
+        Model runs must be of the same length                      """
         
     for cube in cubes1:
         if cube.standard_name == 'surface_temperature':
@@ -54,6 +56,9 @@ def compare_standard(cubes1, cubes2, time_slice=-1):
         if cube.standard_name == 'surface_net_downward_shortwave_flux':
             downward_sw_flux_2 = cube
            
+    if surface_temp_1.shape[0] != surface_temp_2.shape[0]:
+        raise Exception('Model run lengths must be the same')
+    
     surface_temp_diff = surface_temp_1.data - surface_temp_2.data
     surface_temp = surface_temp_1
     surface_temp.data = surface_temp_diff
@@ -114,7 +119,7 @@ def compare_daily(cubes1, cubes2, time_slice=-1):
     plt.show()
     
     
-def compare_profile(cubes1, cubes2, time_slice=-1, experiment='Experiment'):
+def compare_profile(cubes1, cubes2, time_slice=-1, experiment='Experiment', globe=False):
     
     """ Compare temperature profile of control and experiment
         Compare specific humidity profile of control and experiment """
@@ -142,27 +147,25 @@ def compare_profile(cubes1, cubes2, time_slice=-1, experiment='Experiment'):
     absolute_temp_2 = potential_temp_2*((air_pressure_2/p0)**(287.05/1005))
 
     
-    plt.plot(absolute_temp_1[time_slice,:,0,0].data, np.arange(0,39), linestyle='-', color='b', label='Control, sub')
-    plt.plot(absolute_temp_2[time_slice,:,0,0].data, np.arange(0,39), linestyle='-', color='r', label='%s, sub' %(experiment))
-    plt.plot(absolute_temp_1[time_slice,:,0,72].data, np.arange(0,39), linestyle='--', color='b', label='Control, anti')
-    plt.plot(absolute_temp_2[time_slice,:,0,72].data, np.arange(0,39), linestyle='--', color='r', label='%s, anti' %(experiment))
+    plt.plot(absolute_temp_1[time_slice,:,45,0].data, np.arange(0,39), linestyle='-', color='b', label='Control, sub')
+    plt.plot(absolute_temp_2[time_slice,:,45,0].data, np.arange(0,39), linestyle='-', color='r', label='%s, sub' %(experiment))
+    plt.plot(absolute_temp_1[time_slice,:,45,72].data, np.arange(0,39), linestyle='--', color='b', label='Control, anti')
+    plt.plot(absolute_temp_2[time_slice,:,45,72].data, np.arange(0,39), linestyle='--', color='r', label='%s, anti' %(experiment))
     plt.title('Temperature Profiles at Substellar and Antistellar Point')
     plt.xlabel('Temperature [K]')
     plt.ylabel('Height [km]')
     plt.legend()
     plt.show()
     
-    plt.plot(spec_humidity_1[time_slice,:,0,0].data*1000, np.arange(0,39), linestyle='-', color='b', label='Control, sub')
-    plt.plot(spec_humidity_2[time_slice,:,0,0].data*1000, np.arange(0,39), linestyle='-', color='r', label='%s, sub' %(experiment))
-    plt.plot(spec_humidity_1[time_slice,:,0,72].data*1000, np.arange(0,39), linestyle='--', color='b', label='Control, anti')
-    plt.plot(spec_humidity_2[time_slice,:,0,72].data*1000, np.arange(0,39), linestyle='--', color='r', label='%s, anti' %(experiment))
+    plt.plot(spec_humidity_1[time_slice,:,45,0].data*1000, np.arange(0,39), linestyle='-', color='b', label='Control, sub')
+    plt.plot(spec_humidity_2[time_slice,:,45,0].data*1000, np.arange(0,39), linestyle='-', color='r', label='%s, sub' %(experiment))
+    plt.plot(spec_humidity_1[time_slice,:,45,72].data*1000, np.arange(0,39), linestyle='--', color='b', label='Control, anti')
+    plt.plot(spec_humidity_2[time_slice,:,45,72].data*1000, np.arange(0,39), linestyle='--', color='r', label='%s, anti' %(experiment))
     plt.title('Humidity Profile at Substellar and Antistellar Point')
     plt.xlabel('Specific Humidity [g kg-1]')
     plt.ylabel('Height [km]')
     plt.legend()
     plt.show()
-    
-    
 
-    
-    
+            
+        

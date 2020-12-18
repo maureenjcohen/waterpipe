@@ -30,8 +30,6 @@ brewer_redblu = mpl_cm.get_cmap('brewer_RdBu_11')
 
 # Block 1: Data management
 
-directory = '/exports/csce/datastore/geos/users/s1144983/um_data/ch1_control_detailed/raw/'
-directory = 'R:/um_data/ch1_control_detailed/raw/'
 
 def load_files(directory):
     
@@ -188,13 +186,13 @@ def plot_temp_profile(cubes, time_slice=-1):
     p0.convert_units(air_pressure.units)
     absolute_temp = potential_temp*((air_pressure/p0)**(287.05/1005))
     
-    plt.plot(absolute_temp[time_slice,:,0,0].data, np.arange(0,39))
+    plt.plot(absolute_temp[time_slice,:,45,0].data, np.arange(0,39))
     plt.title('Temperature Profile at Substellar Point')
     plt.xlabel('Temperature [K]')
     plt.ylabel('Height [km]')
     plt.show()
     
-    plt.plot(absolute_temp[time_slice,:,0,72].data, np.arange(0,39))
+    plt.plot(absolute_temp[time_slice,:,45,72].data, np.arange(0,39))
     plt.title('Temperature Profile at Antistellar Point')
     plt.xlabel('Temperature [K]')
     plt.ylabel('Height [km]')
@@ -221,7 +219,9 @@ def plot_radiation(cubes, time_slice=-1):
         if cube.standard_name == 'toa_incoming_shortwave_flux':
             incoming_rad = cube
         if cube.standard_name == 'toa_outgoing_longwave_flux':
-            outgoing_rad = cube
+            outgoing_lw = cube
+        if cube.standard_name == 'toa_outgoing_shortwave_flux':
+            outgoing_sw = cube
         if cube.standard_name == 'surface_net_downward_shortwave_flux':
             surface_sw_rad = cube
     # Extract desired cubes from CubeList
@@ -230,7 +230,7 @@ def plot_radiation(cubes, time_slice=-1):
     gridbox_area = 300000*222390
     radiation_balance = []
     for i in range(0,run_length-1):
-        radiation_difference = incoming_rad[i,:,:] - outgoing_rad[i,:,:]
+        radiation_difference = incoming_rad[i,:,:] - outgoing_lw[i,:,:] - outgoing_sw[i,:,:]
         total = np.sum(radiation_difference.data)*gridbox_area
         radiation_balance.append(total)
         
@@ -238,7 +238,25 @@ def plot_radiation(cubes, time_slice=-1):
     plt.xlabel('Time [months]')
     plt.ylabel('TOA radiation balance [W]')
     plt.title('Radiation balance')
-    plt.show() 
+    plt.show()    
+      
+    iplt.contourf(outgoing_lw[time_slice,:,:], brewer_red.N, cmap=brewer_red)
+    ax = plt.gca()
+    ax.gridlines(draw_labels=True)
+    plt.title('TOA Outgoing Longwave Flux [W m-2]', y=1.20)
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    iplt.contourf(outgoing_sw[time_slice,:,:], brewer_red.N, cmap=brewer_red)
+    ax = plt.gca()
+    ax.gridlines(draw_labels=True)
+    plt.title('TOA Outgoing Shortwave Flux [W m-2]', y=1.20)
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
   
     iplt.contourf(surface_sw_rad[time_slice,:,:], brewer_red.N, cmap=brewer_red)
     ax = plt.gca()
@@ -311,7 +329,7 @@ def plot_humidity(cubes, level=14, time_slice=-1):
     # plt.title('Average Nightside Specific Humidity')
     # plt.show() 
     
-    plt.plot(spec_humidity[time_slice,:,0,0].data, np.arange(0,39))
+    plt.plot(spec_humidity[time_slice,:,45,0].data, np.arange(0,39))
     plt.title('Humidity Profile at Substellar Point')
     plt.xlabel('Specific Humidity [kg kg-1]')
     plt.ylabel('Height [km]')
@@ -414,7 +432,41 @@ def plot_evaporation(cubes, time_slice=-1):
     evaporation.units = 'mm.day-1'
     
     return evaporation
+
+def plot_water_balance(evaporation, precipitation, time_slice=-1):
     
+    """ Plot difference between evaporation and precipitation
+        Inputs are Iris cubes calculated by plot_evaporation and plot_precipitation """
+        
+    if evaporation.shape != precipitation.shape:
+        raise Exception('Cubes must be same shape')
+    if evaporation.units != precipitation.units:
+        raise Exception('Cubes must have same units')
+        
+    difference = evaporation - precipitation
+    
+    iplt.contourf(difference[time_slice,:,:], brewer_bg.N, cmap=brewer_bg)
+    ax = plt.gca()
+    ax.gridlines(draw_labels=True)
+    plt.title('Evaporation Minus Precipitation [mm day-1]', y=1.20)
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    run_length = evaporation.shape[0]
+    water_balance = []
+    for i in range(0,run_length-1):
+        water_difference = evaporation[i,:,:] - precipitation[i,:,:]
+        total = np.sum(water_difference.data)
+        water_balance.append(total)
+        
+    plt.plot(np.arange(0,run_length-1), water_balance)
+    plt.xlabel('Time [months]')
+    plt.ylabel('Evaporation Minus Precipitation [mm day-1]')
+    plt.title('Evaporation Minus Precipitation')
+    plt.show()  
+
 
 def plot_clouds(cubes, time_slice=-1, periodicity=False):
     
