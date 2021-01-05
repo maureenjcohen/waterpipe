@@ -722,6 +722,39 @@ def plot_vapour(cubes, time_slice=-1):
     plt.show() 
 
 
+def plot_efficiency(cubes):
+    
+    
+    """ Plot day-night heat redistribution efficiency, defined in Leconte et al. 2013
+        as the ratio of mean night-side outgoing longwave radiation over mean dayside 
+        outgoing longwave radiation                                                  """
+    
+    for cube in cubes:
+        if cube.standard_name == 'toa_outgoing_longwave_flux':
+            outgoing_lw = cube
+            
+    dayside = outgoing_lw.extract(iris.Constraint(longitude=lambda v: 270 < v < 360 or 0 < v < 90, latitude=lambda v: -90 < v < 90))
+    nightside = outgoing_lw.extract(iris.Constraint(longitude=lambda v: 90 < v < 270, latitude=lambda v: -90 < v < 90))
+                
+    dayside_avg = dayside.collapsed('latitude',iris.analysis.MEAN)
+    dayside_avg = dayside_avg.collapsed('longitude',iris.analysis.MEAN)
+    
+    nightside_avg = nightside.collapsed('latitude',iris.analysis.MEAN)
+    nightside_avg = nightside_avg.collapsed('longitude',iris.analysis.MEAN)
+    
+    run_length = cube.shape[0]
+    months = DimCoord((np.arange(0,run_length)),standard_name='time', units='months')
+    
+    iplt.plot(months,(nightside_avg/dayside_avg))
+    plt.title('Day-Night Heat Redistribution Efficiency')
+    plt.ylabel('Ratio')
+    plt.xlabel('Time [months]')
+    plt.show()
+
+                
+
+    
+    
 
 # if __name__ == '__main__':
 #     print('Source folder:')
