@@ -48,6 +48,44 @@ def load_files(directory):
     
     return cubes
 
+def load_loop(directory):
+    
+    """ Load model data dumps into an Iris cube individually
+        Concatenate individual cubes into a CubeList           """
+        
+    filenames = os.listdir(directory)
+    print(filenames)
+    
+    allfiles = []
+    for entry in filenames:
+        fullpath = os.path.join(directory, entry)
+        allfiles.append(fullpath)
+    print(allfiles)
+    
+    dictionary = {}
+    for entry in allfiles:
+        key = entry[37:53]
+#        key = entry[63:76]
+        print(key)
+        group = dictionary.get(key, [])
+        group.append(entry)
+        dictionary[key] = group
+     
+    list_of_cubes = []    
+    for key in dictionary:
+        model_dump = []
+        for entry in allfiles:
+            if entry[37:53] == key:
+                model_dump.append(entry)
+        cube = iris.load(model_dump)
+        list_of_cubes.append(cube)
+        print(str('cubes: ') + str(len(list_of_cubes)))
+        
+    cubes = list_of_cubes
+    
+    return cubes
+                
+
 
 def convert_lazy_data(cubes):
     
