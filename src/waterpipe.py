@@ -48,6 +48,7 @@ def load_files(directory):
     
     return cubes
 
+
 def load_loop(directory):
     
     """ Load model data dumps into an Iris cube individually
@@ -65,7 +66,7 @@ def load_loop(directory):
     dictionary = {}
     for entry in allfiles:
         key = entry[37:53]
-#        key = entry[63:76]
+#        key = entry[69:83]
         print(key)
         group = dictionary.get(key, [])
         group.append(entry)
@@ -256,6 +257,10 @@ def plot_radiation(cubes, time_slice=-1):
     for cube in cubes:
         if cube.standard_name == 'toa_incoming_shortwave_flux':
             incoming_rad = cube
+        if cube.standard_name == 'toa_outgoing_longwave_flux_assuming_clear_sky':
+            outgoing_lw_clear = cube
+        if cube.standard_name == 'toa_outgoing_shortwave_flux_assuming_clear_sky':
+            outgoing_sw_clear = cube
         if cube.standard_name == 'toa_outgoing_longwave_flux':
             outgoing_lw = cube
         if cube.standard_name == 'toa_outgoing_shortwave_flux':
@@ -267,15 +272,41 @@ def plot_radiation(cubes, time_slice=-1):
     run_length = incoming_rad.shape[0]
     gridbox_area = 300000*222390
     radiation_balance = []
+    incoming_list = []
+    outgoing_lw_list = []
+    outgoing_sw_list = []
+    outgoing_lw_clear_list = []
+    outgoing_sw_clear_list = []
     for i in range(0,run_length-1):
-        radiation_difference = incoming_rad[i,:,:] - outgoing_lw[i,:,:] - outgoing_sw[i,:,:]
+        radiation_difference = incoming_rad[i,:,:] - outgoing_lw[i,:,:] - outgoing_sw_clear[i,:,:] #- outgoing_lw_clear[i,:,:] - outgoing_sw_clear[i,:,:]
         total = np.sum(radiation_difference.data)*gridbox_area
         radiation_balance.append(total)
+        incoming = np.sum(incoming_rad[i,:,:].data)*gridbox_area
+        incoming_list.append(incoming)
+        outgoinglw = np.sum(outgoing_lw[i,:,:].data)*gridbox_area
+        outgoing_lw_list.append(outgoinglw)
+        outgoingsw = np.sum(outgoing_sw[i,:,:].data)*gridbox_area
+        outgoing_sw_list.append(outgoingsw)
+        outgoinglwclear = np.sum(outgoing_lw_clear[i,:,:].data)*gridbox_area
+        outgoing_lw_clear_list.append(outgoinglwclear)
+        outgoingswclear = np.sum(outgoing_sw_clear[i,:,:].data)*gridbox_area
+        outgoing_sw_clear_list.append(outgoingswclear)
         
     plt.plot(np.arange(0,run_length-1), radiation_balance)
     plt.xlabel('Time [months]')
     plt.ylabel('TOA radiation balance [W]')
     plt.title('Radiation balance')
+    plt.show()
+    
+    plt.plot(np.arange(0,run_length-1), incoming_list, linestyle='-', color='k', label='Incoming SW')
+    plt.plot(np.arange(0,run_length-1), outgoing_lw_list, linestyle='--', color='b', label='Outgoing LW')
+    plt.plot(np.arange(0,run_length-1), outgoing_sw_list, linestyle='--', color='r', label='Outgoing SW')
+    plt.plot(np.arange(0,run_length-1), outgoing_lw_clear_list, linestyle=':', color='b', label='Outgoing LW, clear')
+    plt.plot(np.arange(0,run_length-1), outgoing_sw_clear_list, linestyle=':', color='r', label='Outgoing SW, clear')
+    plt.title('Radiation Balance Elements')
+    plt.xlabel('Time [months]')
+    plt.ylabel('Radiation [W]')
+    plt.legend()
     plt.show()    
       
     iplt.contourf(outgoing_lw[time_slice,:,:], brewer_red.N, cmap=brewer_red)
