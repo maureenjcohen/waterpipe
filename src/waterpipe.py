@@ -247,6 +247,25 @@ def plot_temp_profile(cubes, time_slice=-1):
     plt.show()
     
     return absolute_temp
+
+def plot_stratosphere(cube, level=25):
+    
+    """ Plot average stratospheric temperature over time
+        Input: absolute temperature cube, level of tropopause       """
+        
+    run_length = cube.shape[0]
+    stratosphere = cube[:,level:-1,:,:].data
+    
+    avg_list = []
+    for t in range(0,run_length):
+        avg = np.mean(stratosphere[t,:,:,:])
+        avg_list.append(avg)
+    
+    plt.plot(np.arange(0,run_length), avg_list)
+    plt.title('Average Stratospheric Temperature [K]')
+    plt.xlabel('Time [months]')
+    plt.ylabel('Temperature [K]')
+    plt.show()
                 
         
 def plot_radiation(cubes, time_slice=-1):
@@ -278,7 +297,7 @@ def plot_radiation(cubes, time_slice=-1):
     outgoing_lw_clear_list = []
     outgoing_sw_clear_list = []
     for i in range(0,run_length-1):
-        radiation_difference = incoming_rad[i,:,:] - outgoing_lw[i,:,:] - outgoing_sw_clear[i,:,:] #- outgoing_lw_clear[i,:,:] - outgoing_sw_clear[i,:,:]
+        radiation_difference = incoming_rad[i,:,:] - outgoing_lw[i,:,:] - outgoing_sw[i,:,:] #- outgoing_lw_clear[i,:,:] - outgoing_sw_clear[i,:,:]
         total = np.sum(radiation_difference.data)*gridbox_area
         radiation_balance.append(total)
         incoming = np.sum(incoming_rad[i,:,:].data)*gridbox_area
@@ -350,8 +369,8 @@ def plot_humidity(cubes, level=14, time_slice=-1):
         if cube.standard_name == 'specific_humidity':
             spec_humidity = cube          
     
-    # dayside = spec_humidity.extract(iris.Constraint(longitude=lambda v: 270 < v < 360 or 0 < v < 90, latitude=lambda v: -90 < v < 90))
-    # nightside = spec_humidity.extract(iris.Constraint(longitude=lambda v: 90 < v < 270, latitude=lambda v: -90 < v < 90))
+    dayside = spec_humidity.extract(iris.Constraint(longitude=lambda v: 270 < v < 360 or 0 < v < 90, latitude=lambda v: -90 < v < 90))
+    nightside = spec_humidity.extract(iris.Constraint(longitude=lambda v: 90 < v < 270, latitude=lambda v: -90 < v < 90))
     
     # dayside_avg = dayside.collapsed('model_level_number', iris.analysis.MEAN)
     # dayside_avg = dayside_avg.collapsed('longitude', iris.analysis.MEAN)
@@ -376,27 +395,28 @@ def plot_humidity(cubes, level=14, time_slice=-1):
     # plt.xlabel('Time [days]')
     # plt.show()
     
-    
-    # dayside_avgs = []
-    # nightside_avgs = []
-    # for day in range(0,dayside.shape[0]):
-    #     dayside_avg = np.mean(dayside[day,:,:,:].data)
-    #     dayside_avgs.append(dayside_avg)
-    #     nightside_avg = np.mean(nightside[day,:,:,:].data)
-    #     nightside_avgs.append(nightside_avg)
+    dayside = dayside.data
+    nightside = nightside.data
+    dayside_avgs = []
+    nightside_avgs = []
+    for day in range(0,dayside.shape[0]):
+        dayside_avg = np.mean(dayside[day,:,:,:])
+        dayside_avgs.append(dayside_avg)
+        nightside_avg = np.mean(nightside[day,:,:,:])
+        nightside_avgs.append(nightside_avg)
     
         
-    # plt.plot(np.arange(0,spec_humidity.shape[0]),np.array(dayside_avgs))
-    # plt.xlabel('Time [days]')
-    # plt.ylabel('Specific Humidity [kg kg-1]')
-    # plt.title('Average Dayside Specific Humidity')
-    # plt.show()
+    plt.plot(np.arange(0,spec_humidity.shape[0]),np.array(dayside_avgs))
+    plt.xlabel('Time [days]')
+    plt.ylabel('Specific Humidity [kg kg-1]')
+    plt.title('Average Dayside Specific Humidity')
+    plt.show()
 
-    # plt.plot(np.arange(0,spec_humidity.shape[0]),np.array(nightside_avgs))
-    # plt.xlabel('Time [days]')
-    # plt.ylabel('Specific Humidity [kg kg-1]')
-    # plt.title('Average Nightside Specific Humidity')
-    # plt.show() 
+    plt.plot(np.arange(0,spec_humidity.shape[0]),np.array(nightside_avgs))
+    plt.xlabel('Time [days]')
+    plt.ylabel('Specific Humidity [kg kg-1]')
+    plt.title('Average Nightside Specific Humidity')
+    plt.show() 
     
     plt.plot(spec_humidity[time_slice,:,45,0].data, np.arange(0,39))
     plt.title('Humidity Profile at Substellar Point')
