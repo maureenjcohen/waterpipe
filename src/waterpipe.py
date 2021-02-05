@@ -18,7 +18,6 @@ import iris.coords
 from iris.coords import DimCoord
 import numpy as np
 import scipy as sp
-#import windspharm
 # Import packages
 
 
@@ -180,9 +179,9 @@ def plot_temperature(cubes, time_slice=-1):
                 if longs.bounds == None:
                     surface_temp.coord('longitude').guess_bounds()
                 
-                dayside = surface_temp.extract(iris.Constraint(longitude=lambda v: -90 < v < 90, latitude=lambda v: -90 < v < 90))
+                dayside = surface_temp.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -90 <= v <= 90))
                 day_grid = iris.analysis.cartography.area_weights(dayside)
-                nightside = surface_temp.extract(iris.Constraint(longitude=lambda v: 90 < v < 270, latitude=lambda v: -90 < v < 90))
+                nightside = surface_temp.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
                 night_grid = iris.analysis.cartography.area_weights(nightside)
                 global_grid = iris.analysis.cartography.area_weights(surface_temp)
                 
@@ -253,6 +252,62 @@ def plot_temp_profile(cubes, time_slice=-1):
     plt.title('Air Temp at 1.5 m [K]', y=1.20)
     plt.xlabel('Latitude [degrees]')
     plt.ylabel('Longitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    return absolute_temp
+
+
+def plot_xtemp(cubes, time_slice=-1):    
+    
+    for cube in cubes:
+        if cube.standard_name == 'air_potential_temperature':
+            potential_temp = cube.copy()
+        if cube.standard_name == 'air_pressure':
+            air_pressure = cube.copy()
+
+    p0 = iris.coords.AuxCoord(100000.0, long_name='reference_pressure', units='Pa')
+    p0.convert_units(air_pressure.units)
+    absolute_temp = potential_temp*((air_pressure/p0)**(287.05/1005)) # R and cp in J/kgK for 300K
+    
+    dayside = absolute_temp.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -90 <= v <= 90))
+    nightside = absolute_temp.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
+    
+    dayside_zonal_mean = dayside.collapsed('longitude', iris.analysis.MEAN)
+    nightside_zonal_mean = nightside.collapsed('longitude', iris.analysis.MEAN)
+    
+    CS_day = iplt.contourf(dayside_zonal_mean[time_slice,:,:], brewer_redblu.N, cmap=brewer_redblu)
+    plt.title('Dayside Zonal Mean Air Temp [K]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.clabel(CS_day, inline=False, colors='k', fmt='%1.1f')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    CS_night = iplt.contourf(nightside_zonal_mean[time_slice,:,:], brewer_redblu.N, cmap=brewer_redblu)
+    plt.title('Nightside Zonal Mean Air Temp [K]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.clabel(CS_night, inline=False, colors='k', fmt='%1.1f')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    dayside_meridional_mean = dayside.collapsed('latitude', iris.analysis.MEAN)
+    nightside_meridional_mean = nightside.collapsed('latitude', iris.analysis.MEAN)
+    
+    CS_day = iplt.contourf(dayside_meridional_mean[time_slice,:,:], brewer_redblu.N, cmap=brewer_redblu)
+    plt.title('Dayside Meridional Mean Air Temp [K]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Longitude [degrees]')
+    plt.clabel(CS_day, inline=False, colors='k', fmt='%1.1f')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    CS_night = iplt.contourf(nightside_meridional_mean[time_slice,:,:], brewer_redblu.N, cmap=brewer_redblu)
+    plt.title('Nightside Meridional Mean Air Temp [K]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Longitude [degrees]')
+    plt.clabel(CS_night, inline=False, colors='k', fmt='%1.1f')
     plt.colorbar(pad=0.1)
     plt.show()
     
@@ -352,7 +407,7 @@ def plot_radiation(cubes, time_slice=-1):
     
     plt.plot(np.arange(0,run_length), radiation_difference_means)
     plt.xlabel('Time [months]')
-    plt.ylabel('TOA radiation balance [W]')
+    plt.ylabel('TOA radiation balance [W m-2]')
     plt.title('Radiation balance (meaned Watts)')
     plt.show()    
     
@@ -416,12 +471,11 @@ def plot_humidity(cubes, level=14, time_slice=-1):
     if longs.bounds == None:
         spec_humidity.coord('longitude').guess_bounds()
         
-    dayside = spec_humidity.extract(iris.Constraint(longitude=lambda v: -90 < v < 90, latitude=lambda v: -90 < v < 90))
+    dayside = spec_humidity.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -90 <= v <= 90))
     day_grid = iris.analysis.cartography.area_weights(dayside)
     dayside_humidity = dayside.collapsed(['latitude', 'longitude', 'model_level_number'],iris.analysis.MEAN, weights=day_grid)
-    print(dayside_humidity.shape)
 
-    nightside = spec_humidity.extract(iris.Constraint(longitude=lambda v: 90 < v < 270, latitude=lambda v: -90 < v < 90))
+    nightside = spec_humidity.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
     night_grid = iris.analysis.cartography.area_weights(nightside)
     nightside_humidity = nightside.collapsed(['latitude', 'longitude', 'model_level_number'],iris.analysis.MEAN, weights=night_grid)
     
@@ -430,21 +484,20 @@ def plot_humidity(cubes, level=14, time_slice=-1):
     
     run_length = spec_humidity.shape[0]
     days = DimCoord((np.arange(0,run_length)),standard_name='time', units='days')
-    print(days)    
         
-    plt.plot((np.arange(0,run_length), dayside_humidity.data))
+    iplt.plot(days, dayside_humidity)
     plt.xlabel('Time [days]')
     plt.ylabel('Specific Humidity [kg kg-1]')
     plt.title('Average Dayside Specific Humidity')
     plt.show()
 
-    iplt.plot((np.arange(0,run_length), nightside_humidity.data))
+    iplt.plot(days, nightside_humidity)
     plt.xlabel('Time [days]')
     plt.ylabel('Specific Humidity [kg kg-1]')
     plt.title('Average Nightside Specific Humidity')
     plt.show() 
-    
-    iplt.plot((np.arange(0,run_length), global_humidity.data))
+        
+    iplt.plot(days, global_humidity)
     plt.xlabel('Time [days]')
     plt.ylabel('Specific Humidity [kg kg-1]')
     plt.title('Average Global Specific Humidity')
@@ -456,14 +509,14 @@ def plot_humidity(cubes, level=14, time_slice=-1):
     plt.ylabel('Height [km]')
     plt.show()
     
-    iplt.contourf(spec_humidity[time_slice,14,:,:], brewer_bg.N, cmap=brewer_bg)
+    iplt.contourf(spec_humidity[time_slice,level,:,:], brewer_bg.N, cmap=brewer_bg)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.title('Specific Humidity at h=%s km [kg kg-1]'%(level+1), y=1.20)
     plt.colorbar(pad=0.1)
     plt.show()
     
-    iplt.contourf((spec_humidity[time_slice,:,:,36]+spec_humidity[-1,:,:,108])/2, brewer_bg.N, cmap=brewer_bg)
+    iplt.contourf((spec_humidity[time_slice,:,:,36]+spec_humidity[time_slice,:,:,108])/2, brewer_bg.N, cmap=brewer_bg)
     plt.title('Specific Humidity at Terminators, final day [kg kg-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude')
@@ -474,6 +527,55 @@ def plot_humidity(cubes, level=14, time_slice=-1):
     plt.title('Specific Humidity at Longitude 0 [kg kg-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude')
+    plt.colorbar(pad=0.1)
+    plt.show()
+
+
+def plot_xhumidity(cubes, time_slice=-1):
+    
+    for cube in cubes:
+        if cube.standard_name == 'specific_humidity':
+            spec_humidity = cube.copy()         
+
+            
+    dayside = spec_humidity.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -90 <= v <= 90))
+    nightside = spec_humidity.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
+    
+    dayside_zonal_mean = dayside.collapsed('longitude', iris.analysis.MEAN)
+    nightside_zonal_mean = nightside.collapsed('longitude', iris.analysis.MEAN)
+    
+    CS_day = iplt.contourf(dayside_zonal_mean[time_slice,:,:], brewer_redblu.N, cmap=brewer_redblu)
+    plt.title('Dayside Zonal Mean Specific Humidity [kg kg-1]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+#    plt.clabel(CS_day, inline=False, colors='k', fmt='%1.1f')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    CS_night = iplt.contourf(nightside_zonal_mean[time_slice,:,:], brewer_redblu.N, cmap=brewer_redblu)
+    plt.title('Nightside Zonal Mean Specific Humidity [kg kg-1]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+#    plt.clabel(CS_night, inline=False, colors='k', fmt='%1.1f')
+    plt.colorbar(pad=0.1)
+    plt.show()
+
+    dayside_meridional_mean = dayside.collapsed('latitude', iris.analysis.MEAN)
+    nightside_meridional_mean = nightside.collapsed('latitude', iris.analysis.MEAN)
+    
+    CS_day = iplt.contourf(dayside_meridional_mean[time_slice,:,:], brewer_redblu.N, cmap=brewer_redblu)
+    plt.title('Dayside Meridional Mean Specific Humidity [kg kg-1]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Longitude [degrees]')
+#    plt.clabel(CS_day, inline=False, colors='k', fmt='%1.1f')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    CS_night = iplt.contourf(nightside_meridional_mean[time_slice,:,:], brewer_redblu.N, cmap=brewer_redblu)
+    plt.title('Nightside Meridional Mean Specific Humidity [kg kg-1]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Longitude [degrees]')
+#    plt.clabel(CS_night, inline=False, colors='k', fmt='%1.1f')
     plt.colorbar(pad=0.1)
     plt.show()
 
@@ -496,18 +598,18 @@ def plot_precipitation(cubes, time_slice=-1):
     if longs.bounds == None:
         precipitation.coord('longitude').guess_bounds()
     
-    dayside = precipitation.extract(iris.Constraint(longitude=lambda v: -90 < v < 90, latitude=lambda v: -90 < v < 90))
+    dayside = precipitation.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -90 <= v <= 90))
     day_grid = iris.analysis.cartography.area_weights(dayside)
     dayside_precip = dayside.collapsed(['latitude', 'longitude'],iris.analysis.MEAN, weights=day_grid)
 
-    nightside = precipitation.extract(iris.Constraint(longitude=lambda v: 90 < v < 270, latitude=lambda v: -90 < v < 90))
+    nightside = precipitation.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
     night_grid = iris.analysis.cartography.area_weights(nightside)
     nightside_precip = nightside.collapsed(['latitude', 'longitude'],iris.analysis.MEAN, weights=night_grid)
     
     global_grid = iris.analysis.cartography.area_weights(precipitation)
     global_precip = precipitation.collapsed(['latitude','longitude'],iris.analysis.MEAN, weights=global_grid)
     
-    substellar = precipitation.extract(iris.Constraint(longitude=lambda v: -15 < v < 15, latitude=lambda v: -15 < v < 15))
+    substellar = precipitation.extract(iris.Constraint(longitude=lambda v: 345 < v <= 359 or 0 <= v <= 15, latitude=lambda v: -15 <= v <= 15))
     substellar_grid = iris.analysis.cartography.area_weights(substellar)
     substellar_precip = substellar.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=substellar_grid)
     
@@ -581,18 +683,33 @@ def plot_evaporation(cubes, time_slice=-1):
     
     return evaporation
 
-def plot_water_balance(evaporation, precipitation, time_slice=-1):
+def plot_water_balance(evap, precip, time_slice=-1):
     
     """ Plot difference between evaporation and precipitation
         Inputs are Iris cubes calculated by plot_evaporation and plot_precipitation """
         
-    if evaporation.shape != precipitation.shape:
+    if evap.shape != precip.shape:
         raise Exception('Cubes must be same shape')
-    if evaporation.units != precipitation.units:
+    if evap.units != precip.units:
         raise Exception('Cubes must have same units')
-        
+
+    evaporation = evap.copy()
+    precipitation = precip.copy()
+    
+    evaporation = evaporation.regrid(precipitation, iris.analysis.Linear())    
+    
     difference = evaporation - precipitation
     
+    lats = precipitation.coord('latitude')
+    longs = precipitation.coord('longitude')
+
+    if lats.bounds.all() == None:
+        precipitation.coord('latitude').guess_bounds()
+    if longs.bounds.all() == None:
+        precipitation.coord('longitude').guess_bounds()
+    
+    global_grid = iris.analysis.cartography.area_weights(precipitation)
+
     iplt.contourf(difference[time_slice,:,:], brewer_bg.N, cmap=brewer_bg)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
@@ -602,18 +719,28 @@ def plot_water_balance(evaporation, precipitation, time_slice=-1):
     plt.colorbar(pad=0.1)
     plt.show()
     
-    run_length = evaporation.shape[0]
+    run_length = precipitation.shape[0]
     water_balance = []
-    for i in range(0,run_length-1):
+    for i in range(0,run_length):
         water_difference = evaporation[i,:,:] - precipitation[i,:,:]
-        total = np.sum(water_difference.data)
+        total = np.sum(water_difference.data*global_grid)
         water_balance.append(total)
         
-    plt.plot(np.arange(0,run_length-1), water_balance)
+    plt.plot(np.arange(0,run_length), water_balance)
     plt.xlabel('Time [months]')
     plt.ylabel('Evaporation Minus Precipitation [mm day-1]')
     plt.title('Evaporation Minus Precipitation')
     plt.show()  
+                
+    evap_mean = evap.collapsed(['latitude','longitude'], iris.analysis.MEAN, weights=global_grid)
+    precip_mean = precip.collapsed(['latitude','longitude'], iris.analysis.MEAN, weights=global_grid)
+    mean_difference = evap_mean.data - precip_mean.data
+    
+    plt.plot(np.arange(0,run_length), mean_difference)
+    plt.xlabel('Time [months]')
+    plt.ylabel('Evaporation Minus Precipitation [mm day-1 m-2]')
+    plt.title('Evaporation Minus Precipitation')
+    plt.show() 
 
 
 def plot_clouds(cubes, time_slice=-1, periodicity=False):
@@ -723,86 +850,6 @@ def check_periodicity(data):
     ax.set_xlabel('Frequency [1/run_length]')
     ax.set_ylabel('PSD')
     ax.set_title('Periodicity in data')
-    
-
-def plot_winds(cubes, level=14, time_slice=-1, wpharm=False, omega=0.64617667):
-    
-    """ Inputs: Iris CubeList and model level you want to look at
-        wpharm=True allows windspharm library to be used on Linux machines
-        omega is the rotation rate of the planet in 10^-5 rad/s. Default is Proxima Centauri b.
-        
-        Plot zonal wind speed at level
-        Plot streamplot at level
-        Plot zonal mean zonal winds for planet
-        
-        If wpharm=True, plot stream function and relative vorticity    """
-        
-    for cube in cubes:
-        if cube.standard_name == 'x_wind':
-            x_wind = cube.copy()
-        if cube.standard_name == 'y_wind':
-            y_wind = cube.copy()
-        if cube.standard_name == 'upward_air_velocity':
-            z_wind = cube.copy()
- 
-    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
-   
-    speed = iris.analysis.maths.apply_ufunc(np.sqrt, (x_wind**2 + y_wind**2))
-    
-    iplt.contourf(x_wind[time_slice,level,:,:], brewer_reds.N, cmap=brewer_reds)
-    ax = plt.gca()
-    ax.gridlines(draw_labels=True)
-    plt.title('Zonal Wind Speed, h=%s km [m s-1]' %(level+1), y=1.20)
-    plt.colorbar(pad=0.1)
-    plt.show()
-
-    X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
-    fig = plt.figure(figsize = (12, 7)) 
-    strm = plt.streamplot(X, Y, np.roll(x_wind[time_slice,level,:,:].data, 72, axis=1), np.roll(y_wind[time_slice,level,:,:].data, 72, axis=1), density = 0.5, color=np.roll(speed[time_slice,level,:,:].data, 72, axis=1), cmap=brewer_reds)
-    # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
-    # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
-    fig.colorbar(strm.lines)
-    plt.title('Wind speed and direction [m s-1], h=%s km' %(level+1))
-    plt.xlabel('Longitude')
-    plt.ylabel('Latitude')
-    plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
-    plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
-    plt.show() 
-        
-    zonal_mean = x_wind.collapsed('longitude', iris.analysis.MEAN)
-    
-    CS = iplt.contourf(zonal_mean[time_slice,:,:], brewer_redblu.N, cmap=brewer_redblu)
-    plt.title('Zonal Mean Zonal Wind [m s-1]', y=1.05)
-    plt.ylabel('Height [m]')
-    plt.xlabel('Latitude [degrees]')
-    plt.clabel(CS, inline=False, colors='k', fmt='%1.1f')
-    plt.colorbar(pad=0.1)
-    plt.show()
-    
-    if wpharm == True:
-
-        wind = windspharm.iris.VectorWind(x_wind, y_wind)
-        streamfunction, velpotential = wind.sfvp()
-        clevs = [-200, -180, -160, -120, -100, -80, -60, -40, -20, 0, 40, 80, 120, 160, 200]
-        iplt.contourf(streamfunction[time_slice,level,:,:]*1e-06, clevs, cmap=brewer_redblu, extend='both')
-        ax = plt.gca()
-        ax.gridlines(draw_labels=True)
-        plt.colorbar(orientation='horizontal')
-        plt.title('Streamfunction [$10^6$ m2 s-1], h = %s km' %(level+1), y=1.20)
-        plt.show()
-
-        planet_vort = wind.planetaryvorticity(omega=omega)
-        relative_vort = wind.vorticity()
-        absolute_vort = wind.absolutevorticity()
-        
-        iplt.contourf(relative_vort[time_slice,level,:,:], brewer_bg.N, cmap=brewer_bg)
-        plt.title('Relative Vorticity, h = %s km' %(level+1), y=1.20)
-        plt.ylabel('Latitude [degrees]')
-        plt.xlabel('Longitude [degrees]')
-        ax = plt.gca()
-        ax.gridlines(draw_labels=True)
-        plt.colorbar(orientation='horizontal')
-        plt.show()
 
 
 def plot_vapour(cubes, time_slice=-1):
@@ -858,12 +905,26 @@ def plot_vapour(cubes, time_slice=-1):
     
     magnitude3D = iris.analysis.maths.apply_ufunc(np.sqrt, (x_vapour**2 + y_vapour**2 + z_vapour**2))
     
-    global_avgs = []
-    for day in range(0,x_vapour.shape[0]):
-        global_avg = np.mean(magnitude3D[day,:,:].data)
-        global_avgs.append(global_avg)
+    lats = x_vapour.coord('latitude')
+    longs = x_vapour.coord('longitude')
 
-    plt.plot(np.arange(0,x_vapour.shape[0]), np.array(global_avgs))
+    if lats.bounds == None:
+        x_vapour.coord('latitude').guess_bounds()
+    if longs.bounds == None:
+        x_vapour.coord('longitude').guess_bounds()
+    
+    run_length = x_vapour.shape[0]
+    global_grid = iris.analysis.cartography.area_weights(x_vapour)
+    global_avg = magnitude3D.collapsed(['latitude','longitude'], iris.analysis.MEAN, weights=global_grid)
+    months = DimCoord((np.arange(0,run_length)), standard_name='time', units='months')
+
+    
+    # global_avgs = []
+    # for day in range(0,x_vapour.shape[0]):
+    #     global_avg = np.mean(magnitude3D[day,:,:].data*global_grid)
+    #     global_avgs.append(global_avg)
+
+    iplt.plot(months, global_avg)
     plt.xlabel('Time [months]')
     plt.ylabel('Average Total Vapour Flux [kg s-1]')
     plt.title('Vapour Flux Over Time')
@@ -888,14 +949,14 @@ def plot_efficiency(cubes):
     if longs.bounds == None:
         outgoing_lw.coord('longitude').guess_bounds()
     
-    dayside = outgoing_lw.extract(iris.Constraint(longitude=lambda v: -90 < v < 90, latitude=lambda v: -90 < v < 90))
+    dayside = outgoing_lw.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -90 <= v <= 90))
     day_grid = iris.analysis.cartography.area_weights(dayside)
     dayside_avg = dayside.collapsed(['latitude', 'longitude'],iris.analysis.MEAN, weights=day_grid)
 
-    nightside = outgoing_lw.extract(iris.Constraint(longitude=lambda v: 90 < v < 270, latitude=lambda v: -90 < v < 90))
+    nightside = outgoing_lw.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
     night_grid = iris.analysis.cartography.area_weights(nightside)
     nightside_avg = nightside.collapsed(['latitude', 'longitude'],iris.analysis.MEAN, weights=night_grid)    
-    
+
     run_length = outgoing_lw.shape[0]
     months = DimCoord((np.arange(0,run_length)),standard_name='time', units='months')
     
@@ -905,9 +966,138 @@ def plot_efficiency(cubes):
     plt.xlabel('Time [months]')
     plt.show()
 
+def plot_cloud_variability(cubes):
+    
+    """ Plot spatial standard deviation in cloud area fraction"""
+    
+    for cube in cubes:
+        if cube.long_name == 'cloud_area_fraction_assuming_maximum_random_overlap':
+            cloud_cover = cube.copy()
+    
+    data = cloud_cover.data
+    spatial_stdev = np.std(data, axis=0)
+
+    plt.contourf(np.roll(spatial_stdev, 72, axis=1), cmap=brewer_bg)
+    plt.title('Standard Deviation in Cloud Cover')
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.yticks((0,45,89),('90S', '0', '90N'))
+    plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
+    plt.colorbar(pad=0.1)
+    plt.show()  
+
+
+def plot_surftemp_variability(cubes):
+    
+    """ Plot spatial standard deviation in mean surface temperature"""
+    
+    for cube in cubes:
+        if cube.standard_name == 'surface_temperature':
+            surface_temp = cube.copy()
+            
+            if len(surface_temp.cell_methods) != 0 and surface_temp.cell_methods[0].method == 'mean':
+    
+                data = surface_temp.data
+                spatial_stdev = np.std(data, axis=0)
+            
+                plt.contourf(np.roll(spatial_stdev, 72, axis=1), cmap=brewer_reds)
+                plt.title('Standard Deviation in Mean Surface Temperature')
+                plt.ylabel('Longitude [degrees]')
+                plt.xlabel('Latitude [degrees]')
+                plt.yticks((0,45,89),('90S', '0', '90N'))
+                plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
+                plt.colorbar(pad=0.1)
+                plt.show()
                 
 
+def plot_airtemp_variability(cubes, level=(14,24,34)):
     
+    """ Plot spatial standard deviation in mean air temperature at levels"""
+    
+    for cube in cubes:
+        if cube.standard_name == 'air_potential_temperature':
+            potential_temp = cube.copy()
+        if cube.standard_name == 'air_pressure':
+            air_pressure = cube.copy()
+
+            
+    p0 = iris.coords.AuxCoord(100000.0, long_name='reference_pressure', units='Pa')
+    p0.convert_units(air_pressure.units)
+    absolute_temp = potential_temp*((air_pressure/p0)**(287.05/1005)) # R and cp in J/kgK for 300K
+    
+    data = absolute_temp.data
+    spatial_stdev = np.std(data, axis=0)
+    
+    plt.contourf(np.roll(spatial_stdev[level[0],:,:], 72, axis=1), cmap=brewer_reds)
+    plt.title('Standard Deviation in Air Temperature, height=%s km' %(level[0]+1))
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.yticks((0,45,89),('90S', '0', '90N'))
+    plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    plt.contourf(np.roll(spatial_stdev[level[1],:,:], 72, axis=1), cmap=brewer_reds)
+    plt.title('Standard Deviation in Air Temperature, height=%s km' %(level[1]+1))
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.yticks((0,45,89),('90S', '0', '90N'))
+    plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    plt.contourf(np.roll(spatial_stdev[level[2],:,:], 72, axis=1), cmap=brewer_reds)
+    plt.title('Standard Deviation in Air Temperature, height=%s km' %(level[2]+1))
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.yticks((0,45,89),('90S', '0', '90N'))
+    plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+
+def plot_humidity_variability(cubes, level=(14,24,34)):
+    
+    """ Plot spatial standard deviation in mean air temperature at levels"""
+    
+    for cube in cubes:
+        if cube.standard_name == 'specific_humidity':
+            spec_humid = cube.copy()
+    
+    data = spec_humid.data
+    spatial_stdev = np.std(data, axis=0)
+    
+    plt.contourf(np.roll(spatial_stdev[level[0],:,:], 72, axis=1), cmap=brewer_reds)
+    plt.title('Standard Deviation in Specific Humidity, height=%s km' %(level[0]+1))
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.yticks((0,45,89),('90S', '0', '90N'))
+    plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    plt.contourf(np.roll(spatial_stdev[level[1],:,:], 72, axis=1), cmap=brewer_reds)
+    plt.title('Standard Deviation in Specific Humidity, height=%s km' %(level[1]+1))
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.yticks((0,45,89),('90S', '0', '90N'))
+    plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    plt.contourf(np.roll(spatial_stdev[level[2],:,:], 72, axis=1), cmap=brewer_reds)
+    plt.title('Standard Deviation in Specific Humidity, height=%s km' %(level[2]+1))
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.yticks((0,45,89),('90S', '0', '90N'))
+    plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+
+            
+    
+        
     
 
 # if __name__ == '__main__':

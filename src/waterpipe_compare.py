@@ -41,20 +41,20 @@ def compare_standard(cubes1, cubes2, time_slice=-1):
     for cube in cubes1:
         if cube.standard_name == 'surface_temperature':
             if len(cube.cell_methods) != 0 and cube.cell_methods[0].method == 'mean':
-                surface_temp_1 = cube
+                surface_temp_1 = cube.copy()
         if cube.standard_name == 'precipitation_flux':
-            precip_flux_1 = cube
+            precip_flux_1 = cube.copy()
         if cube.standard_name == 'surface_net_downward_shortwave_flux':
-            downward_sw_flux_1 = cube
+            downward_sw_flux_1 = cube.copy()
 
     for cube in cubes2:
         if cube.standard_name == 'surface_temperature':
             if len(cube.cell_methods) != 0 and cube.cell_methods[0].method == 'mean':
-                surface_temp_2 = cube
+                surface_temp_2 = cube.copy()
         if cube.standard_name == 'precipitation_flux':
-            precip_flux_2 = cube
+            precip_flux_2 = cube.copy()
         if cube.standard_name == 'surface_net_downward_shortwave_flux':
-            downward_sw_flux_2 = cube
+            downward_sw_flux_2 = cube.copy()
            
     if surface_temp_1.shape[0] != surface_temp_2.shape[0]:
         raise Exception('Model run lengths must be the same')
