@@ -222,7 +222,7 @@ gif.save(nightside_frames, '/exports/csce/datastore/geos/users/s1144983/um_data/
 
 """ CODE BLOCK FOR STREAMFUNCTION """
 
-for cube in control:
+for cube in slow:
     if cube.standard_name == 'x_wind':
         x_wind = cube.copy()
     if cube.standard_name == 'y_wind':
@@ -237,16 +237,16 @@ def calculate_streamfunction(x_wind, y_wind, level, time_slice=-1):
     streamfunction, velpotential = wind.sfvp()
     clevs = [-200, -180, -160, -120, -100, -80, -60, -40, -20, 0, 40, 80, 120, 160, 200]
     iplt.contourf(streamfunction[time_slice,level,:,:]*1e-06, clevs, cmap=brewer_redblu, extend='both')
+    plt.title('Streamfunction [$10^6$ m2 s-1], h = %s km' %(level+1), y=1.20)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.colorbar(orientation='horizontal')
-    plt.title('Streamfunction [$10^6$ m2 s-1], h = %s km' %(level+1), y=1.20)
-
+    plt.show()
 frames = []
 for level in range(38):
     frame = calculate_streamfunction(x_wind, y_wind, level)
     frames.append(frame)
 
-gif.save(frames, '/exports/csce/datastore/geos/users/s1144983/um_data/ch1_control/gifs/streamfunction.gif', duration = 19, unit = 's', between='startend')
+gif.save(frames, '/exports/csce/datastore/geos/users/s1144983/um_data/ch1_period18/gifs/streamfunction.gif', duration = 19, unit = 's', between='startend')
 
     

@@ -188,3 +188,65 @@ def plot_zwind(cubes, time_slice=-1):
 #    plt.clabel(CS_night, inline=False, colors='k', fmt='%1.1f')
     plt.colorbar(pad=0.1)
     plt.show()
+    
+
+def calculate_timescales(cubes, stellar_constant=837):
+    
+    """ Implements formula from Koll & Abbot 2016 for:
+        Timescale for equatorial waves to transport energy across the planet
+        Atmosphere's radiative cooling time
+        Stellar constant for FAST experiment: 1100
+        Stellar constant for SLOW experiment: 420                        """
+
+# I made every conceivable kind of error while writing this function    
+
+    for cube in cubes:
+        if cube.long_name == 'surface_diffuse_albedo_assuming_no_snow': # long name not standard name
+            albedo = cube.copy()
+        # if cube.standard_name == 'specific_humidity':
+        #     q = cube.copy()
+            
+    R = 297.0 # gas constant for air in J/kgK, from UM Planet Constants
+    a = 7160000 # planet's radius in m, from UM Planet Constants
+    g = 10.9 # mean gravity in m/s2, from UM Planet Constants
+    sigma = 5.67e-8 # Stefan-Boltzmann constant, SI units NOT BOLTZMANN'S CONSTANT GODDAMN ONLY 20 ORDERS OF MAGNITUDE OFF
+    pressure = 100000 # surface pressure in Pa, from UM Planet Constants DO NOT PUT A COMMA IN HERE!! NUMPY NOT LIKE!!
+    cp = 1038 # specific heat capacity at constant pressure for N2, J/kgK
+#    solar_constant = 0.0017*3.828e26 # luminosity of Proxima Centauri in W, wrong constant, WHY DID U USE THE SYMBOL FOR STELLAR LUMINOSITY THEN DANIEL AND DORIAN
+    
+    mean_albedo = albedo.collapsed(['time','pseudo_level'], iris.analysis.MEAN)
+    iplt.contourf(mean_albedo, brewer_bg.N, cmap=brewer_bg)
+    ax = plt.gca()
+    ax.gridlines(draw_labels=True)
+    plt.title('Mean Surface Albedo [K]', y=1.20)
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    lats = albedo.coord('latitude')
+    longs = albedo.coord('longitude')
+
+    if lats.bounds == None:
+        albedo.coord('latitude').guess_bounds()
+    if longs.bounds == None:
+        albedo.coord('longitude').guess_bounds()
+    
+    global_grid = iris.analysis.cartography.area_weights(albedo)
+    
+    alpha = albedo.collapsed(['latitude', 'longitude', 'time', 'pseudo_level'], iris.analysis.MEAN, weights=global_grid)
+    alpha = alpha.data   
+    
+    Teq = ((stellar_constant*(1-alpha))/(4*sigma))**(1/4) # brackets matter
+    cwave = R*np.sqrt(Teq/cp)  
+    twave = a/cwave
+    trad = (cp*pressure)/(g*sigma*(Teq**3)) 
+    ratio = twave/trad
+    
+    print('Ratio of wave to radiative timescale is ' + str(ratio))
+    print('Wave timescale is ' + str(twave) + ' seconds')
+    print('Radiative timescale is ' + str(trad) + ' seconds')
+    
+    return ratio
+
+    
+        
+    

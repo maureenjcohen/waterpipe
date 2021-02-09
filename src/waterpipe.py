@@ -448,6 +448,50 @@ def plot_radiation(cubes, time_slice=-1):
     plt.xlabel('Latitude [degrees]')
     plt.colorbar(pad=0.1)
     plt.show()
+    
+
+def plot_outgoing(cubes):
+    
+    for cube in cubes:
+        if cube.standard_name == 'toa_outgoing_longwave_flux':
+            outgoing_lw = cube.copy()
+
+    
+    global_lw = outgoing_lw.collapsed('time',iris.analysis.MEAN)
+    
+    iplt.contourf(global_lw, brewer_red.N, cmap=brewer_red)
+    ax = plt.gca()
+    ax.gridlines(draw_labels=True)
+    plt.title('Mean TOA Outgoing Longwave Flux [W m-2]', y=1.20)
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    data = outgoing_lw.data
+    spatial_stdev = np.std(data, axis=0)
+    
+    plt.figure(figsize=(10,4))
+    plt.contourf(np.roll(spatial_stdev, 72, axis=1), cmap=brewer_red)
+    plt.title('Standard Deviation in TOA Outgoing LW [W m-2]')
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.yticks((0,45,89),('90S', '0', '90N'))
+    plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    plt.figure(figsize=(10,4))
+    plt.contourf(spatial_stdev, cmap=brewer_red)
+    plt.title('Standard Deviation in TOA Outgoing LW [W m-2]')
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.yticks((0,45,89),('90S', '0', '90N'))
+    plt.xticks((0,36, 72, 104, 143),('0', '90E', '180E/W', '90W','0'))
+    plt.colorbar(pad=0.1)
+    plt.show() 
+                
+                
 
 
 def plot_humidity(cubes, level=14, time_slice=-1):
@@ -976,9 +1020,10 @@ def plot_cloud_variability(cubes):
     
     data = cloud_cover.data
     spatial_stdev = np.std(data, axis=0)
-
+    
+    plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev, 72, axis=1), cmap=brewer_bg)
-    plt.title('Standard Deviation in Cloud Cover')
+    plt.title('Standard Deviation in Cloud Cover [Area Fraction]')
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
@@ -1000,8 +1045,9 @@ def plot_surftemp_variability(cubes):
                 data = surface_temp.data
                 spatial_stdev = np.std(data, axis=0)
             
+                plt.figure(figsize=(10,4))
                 plt.contourf(np.roll(spatial_stdev, 72, axis=1), cmap=brewer_reds)
-                plt.title('Standard Deviation in Mean Surface Temperature')
+                plt.title('Standard Deviation in Mean Surface Temperature [K]')
                 plt.ylabel('Longitude [degrees]')
                 plt.xlabel('Latitude [degrees]')
                 plt.yticks((0,45,89),('90S', '0', '90N'))
@@ -1028,8 +1074,9 @@ def plot_airtemp_variability(cubes, level=(14,24,34)):
     data = absolute_temp.data
     spatial_stdev = np.std(data, axis=0)
     
+    plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev[level[0],:,:], 72, axis=1), cmap=brewer_reds)
-    plt.title('Standard Deviation in Air Temperature, height=%s km' %(level[0]+1))
+    plt.title('Standard Deviation in Air Temperature [K], height=%s km' %(level[0]+1))
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
@@ -1037,8 +1084,9 @@ def plot_airtemp_variability(cubes, level=(14,24,34)):
     plt.colorbar(pad=0.1)
     plt.show()
     
+    plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev[level[1],:,:], 72, axis=1), cmap=brewer_reds)
-    plt.title('Standard Deviation in Air Temperature, height=%s km' %(level[1]+1))
+    plt.title('Standard Deviation in Air Temperature [K], height=%s km' %(level[1]+1))
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
@@ -1046,8 +1094,9 @@ def plot_airtemp_variability(cubes, level=(14,24,34)):
     plt.colorbar(pad=0.1)
     plt.show()
     
+    plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev[level[2],:,:], 72, axis=1), cmap=brewer_reds)
-    plt.title('Standard Deviation in Air Temperature, height=%s km' %(level[2]+1))
+    plt.title('Standard Deviation in Air Temperature [K], height=%s km' %(level[2]+1))
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
@@ -1067,8 +1116,9 @@ def plot_humidity_variability(cubes, level=(14,24,34)):
     data = spec_humid.data
     spatial_stdev = np.std(data, axis=0)
     
+    plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev[level[0],:,:], 72, axis=1), cmap=brewer_reds)
-    plt.title('Standard Deviation in Specific Humidity, height=%s km' %(level[0]+1))
+    plt.title('Standard Deviation in Specific Humidity [kg kg-1], height=%s km' %(level[0]+1))
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
@@ -1076,8 +1126,9 @@ def plot_humidity_variability(cubes, level=(14,24,34)):
     plt.colorbar(pad=0.1)
     plt.show()
     
+    plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev[level[1],:,:], 72, axis=1), cmap=brewer_reds)
-    plt.title('Standard Deviation in Specific Humidity, height=%s km' %(level[1]+1))
+    plt.title('Standard Deviation in Specific Humidity [kg kg-1], height=%s km' %(level[1]+1))
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
@@ -1085,8 +1136,9 @@ def plot_humidity_variability(cubes, level=(14,24,34)):
     plt.colorbar(pad=0.1)
     plt.show()
     
+    plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev[level[2],:,:], 72, axis=1), cmap=brewer_reds)
-    plt.title('Standard Deviation in Specific Humidity, height=%s km' %(level[2]+1))
+    plt.title('Standard Deviation in Specific Humidity [kg kg-1], height=%s km' %(level[2]+1))
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
