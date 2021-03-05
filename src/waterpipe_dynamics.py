@@ -39,11 +39,18 @@ def plot_zonal_wind(cubes, time_slice=-1):
     
     dayside = x_wind.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -90 <= v <= 90))
     nightside = x_wind.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
+
+    x_end = x_wind[-4:,:,:,:]
+    x_mean = x_end.collapsed('time',iris.analysis.MEAN)
     
     dayside_zonal_mean = dayside.collapsed('longitude', iris.analysis.MEAN)
-    nightside_zonal_mean = nightside.collapsed('longitude', iris.analysis.MEAN)
+    nightside_zonal_mean = nightside.collapsed('longitude', iris.analysis.MEAN)    
+    dayside_zonal_end = dayside_zonal_mean[-4:,:,:]
+    nightside_zonal_end = nightside_zonal_mean[-4:,:,:]
+    dayside_zonal_time = dayside_zonal_end.collapsed('time', iris.analysis.MEAN)
+    nightside_zonal_time = nightside_zonal_end.collapsed('time', iris.analysis.MEAN)
     
-    CS_day = iplt.contourf(dayside_zonal_mean[time_slice,:,:], brewer_redblu.N, cmap=brewer_redblu)
+    CS_day = iplt.contourf(dayside_zonal_mean[time_slice,:,:], levels=np.linspace(-170,130,20), cmap=brewer_redblu)
     plt.title('Dayside Zonal Mean Zonal Wind [m s-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
@@ -51,13 +58,106 @@ def plot_zonal_wind(cubes, time_slice=-1):
     plt.colorbar(pad=0.1)
     plt.show()
     
-    CS_night = iplt.contourf(nightside_zonal_mean[time_slice,:,:], brewer_redblu.N, cmap=brewer_redblu)
+    CS_night = iplt.contourf(nightside_zonal_mean[time_slice,:,:], levels=np.linspace(-170,130,20), cmap=brewer_redblu)
     plt.title('Nightside Zonal Mean Zonal Wind [m s-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
     plt.clabel(CS_night, inline=False, colors='k', fmt='%1.1f')
     plt.colorbar(pad=0.1)
     plt.show()
+    
+    CS_day = iplt.contourf(x_mean[:,:,0], levels=np.linspace(-170,130,20), cmap=brewer_redblu)
+    plt.title('Mean Zonal Wind, Long 0 [m s-1]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.clabel(CS_day, inline=False, colors='k', fmt='%1.1f')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    CS_night = iplt.contourf(x_mean[:,:,72], levels=np.linspace(-170,130,20), cmap=brewer_redblu)
+    plt.title('Mean Zonal Wind, Long 180 [m s-1]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.clabel(CS_night, inline=False, colors='k', fmt='%1.1f')
+    plt.colorbar(pad=0.1)
+    plt.show()
+
+    
+def plot_zonal_line(cubes):
+    
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube.copy()
+    
+    height = x_wind.shape[1]
+    lats = x_wind.coord('latitude')
+    longs = x_wind.coord('longitude')
+
+    if lats.bounds == None:
+        x_wind.coord('latitude').guess_bounds()
+    if longs.bounds == None:
+        x_wind.coord('longitude').guess_bounds()
+        
+    dayside = x_wind.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -90 <= v <= 90))
+    nightside = x_wind.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
+    day_grid = iris.analysis.cartography.area_weights(dayside[-4:,:,:,:])
+    night_grid = iris.analysis.cartography.area_weights(nightside[-4:,:,:,:])
+    dayside = dayside[-4:,:,:,:]
+    nightside = nightside[-4:,:,:,:]
+    
+    dayside_mean = dayside.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
+    nightside_mean = nightside.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)
+    dayside_data = dayside_mean.data
+    dayside_stdev = np.std(dayside_data, axis=0)
+    nightside_data = nightside_mean.data
+    nightside_stdev = np.std(nightside_data, axis=0)
+    
+    dayside_mean = dayside_mean.collapsed('time',iris.analysis.MEAN)
+    nightside_mean = nightside_mean.collapsed('time',iris.analysis.MEAN)
+                                 
+    plt.plot(dayside_mean.data, np.arange(0,height))
+    plt.title('Dayside Mean Zonal Wind [m s-1]')
+    plt.ylabel('Level')
+    plt.xlabel('Speed [m s-1]')  
+    plt.show()
+    
+    plt.plot(nightside_mean.data, np.arange(0,height))
+    plt.title('Nightside Mean Zonal Wind [m s-1]')
+    plt.ylabel('Level')
+    plt.xlabel('Speed [m s-1]')  
+    plt.show()
+    
+    plt.plot(dayside_stdev, np.arange(0,height))
+    plt.title('Dayside Mean Zonal Wind StDev [m s-1]')
+    plt.ylabel('Level')
+    plt.xlabel('Speed [m s-1]')  
+    plt.show()
+    
+    plt.plot(nightside_stdev, np.arange(0,height))
+    plt.title('Nightside Mean Zonal Wind StDev [m s-1]')
+    plt.ylabel('Level')
+    plt.xlabel('Speed [m s-1]')  
+    plt.show()
+    
+    
+def plot_zonal_stdev(cubes):
+    
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube.copy()    
+    
+    data = x_wind[-4:,:,:,:].data
+    spatial_stdev = np.std(data, axis=0)
+    
+    plt.figure(figsize=(10,4))
+    plt.contourf(spatial_stdev[:,:,0], cmap=brewer_bg)
+    plt.title('Standard Deviation in Zonal Wind, Long 0')
+    plt.ylabel('Model level')
+    plt.xlabel('Latitude [degrees]')
+    plt.yticks((0,40,60),('0', '40', '85'))
+    plt.xticks((-90,-45,0,45,90),('90S', '45S', '0', '45N', '90N'))
+    plt.colorbar(pad=0.1)
+    plt.show()  
 
 
 def plot_streamfunction(cubes, level=14, time_slice=-1, omega=0.64617667):

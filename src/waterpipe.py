@@ -131,6 +131,21 @@ def convert_names(cubes):
         if cube.name() == 'm01s09i181':
             cube.long_name = 'change_over_time_in_air_temperature_due_to_boundary_layer_ls_cloud'
             
+    return cubes
+            
+
+def load_and_save(directory, filename):
+    
+    cubes = load_files(directory)
+    print(cubes)
+    cubes = convert_names(cubes)
+    print(cubes)
+    cubes = convert_lazy_data(cubes)
+    
+    iris.save(cubes, directory+filename)
+    print('Completed save of ' + filename)
+    
+            
 
 def check_difference(cubes1, cubes2):
     
@@ -234,13 +249,13 @@ def plot_temp_profile(cubes, time_slice=-1):
     p0.convert_units(air_pressure.units)
     absolute_temp = potential_temp*((air_pressure/p0)**(287.05/1005)) # R and cp in J/kgK for 300K
     
-    plt.plot(absolute_temp[time_slice,:,45,0].data, np.arange(0,39))
+    plt.plot(absolute_temp[time_slice,:,45,0].data, np.arange(0,absolute_temp.shape[1]))
     plt.title('Temperature Profile at Substellar Point')
     plt.xlabel('Temperature [K]')
     plt.ylabel('Height [km]')
     plt.show()
     
-    plt.plot(absolute_temp[time_slice,:,45,72].data, np.arange(0,39))
+    plt.plot(absolute_temp[time_slice,:,45,72].data, np.arange(0,absolute_temp.shape[1]))
     plt.title('Temperature Profile at Antistellar Point')
     plt.xlabel('Temperature [K]')
     plt.ylabel('Height [km]')
@@ -457,7 +472,7 @@ def plot_outgoing(cubes):
             outgoing_lw = cube.copy()
 
     
-    global_lw = outgoing_lw.collapsed('time',iris.analysis.MEAN)
+    global_lw = outgoing_lw[24:,:,:].collapsed('time',iris.analysis.MEAN)
     
     iplt.contourf(global_lw, brewer_red.N, cmap=brewer_red)
     ax = plt.gca()
@@ -468,7 +483,7 @@ def plot_outgoing(cubes):
     plt.colorbar(pad=0.1)
     plt.show()
     
-    data = outgoing_lw.data
+    data = outgoing_lw[24:,:,:].data
     spatial_stdev = np.std(data, axis=0)
     
     plt.figure(figsize=(10,4))
@@ -826,7 +841,7 @@ def plot_clouds(cubes, time_slice=-1, periodicity=False):
     plt.colorbar(pad=0.1)
     plt.show()
     
-    iplt.contourf((cloud_volume[time_slice,:,:,36]+cloud_volume[-1,:,:,108])/2, brewer_bg.N, cmap=brewer_bg)
+    iplt.contourf((cloud_volume[time_slice,:,:,36]+cloud_volume[time_slice,:,:,108])/2, brewer_bg.N, cmap=brewer_bg)
     plt.title('Cloud Volume Fraction at Terminators [kg kg-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
@@ -876,7 +891,101 @@ def plot_clouds(cubes, time_slice=-1, periodicity=False):
     
     return np.array(clear_list)
 
+def quickview_clouds(cubes, time_slice=-1):
+    
+    for cube in cubes:
+        if cube.long_name == 'cloud_area_fraction_assuming_maximum_random_overlap':
+            cloud_cover = cube.copy()
+        if cube.long_name == 'cloud_volume_fraction_in_atmosphere_layer':
+            cloud_volume = cube.copy()
+        if cube.long_name == 'liquid_cloud_volume_fraction_in_atmosphere_layer':
+            liquid_cloud = cube.copy()
+        if cube.long_name == 'ice_cloud_volume_fraction_in_atmosphere_layer':
+            ice_cloud = cube.copy()
+        if cube.standard_name == 'mass_fraction_of_cloud_ice_in_air':
+            ice_condensate = cube.copy()
+        if cube.standard_name == 'mass_fraction_of_cloud_liquid_water_in_air':
+            liquid_condensate = cube.copy()
+    
+    iplt.contourf(cloud_cover[time_slice,:,:], brewer_bg.N, cmap=brewer_bg)
+    ax = plt.gca()
+    ax.gridlines(draw_labels=True)
+    plt.title('Cloud Area Fraction', y=1.20)
+    plt.colorbar(pad=0.1)
+    plt.show()
 
+    iplt.contourf(cloud_volume[time_slice,:,:,0], brewer_bg.N, cmap=brewer_bg)
+    plt.title('Cloud Volume Fraction at Longitude 0', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    iplt.contourf(liquid_cloud[time_slice,:,:,0], brewer_bg.N, cmap=brewer_bg)
+    plt.title('Liquid Cloud Volume Fraction at Longitude 0', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    iplt.contourf(ice_cloud[time_slice,:,:,0], brewer_bg.N, cmap=brewer_bg)
+    plt.title('Ice Cloud Volume Fraction at Longitude 0', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    iplt.contourf(ice_condensate[time_slice,:,:,0], brewer_bg.N, cmap=brewer_bg)
+    plt.title('Ice Cloud Mass Fraction at Longitude 0 [kg kg-1]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    iplt.contourf(liquid_condensate[time_slice,:,:,0], brewer_bg.N, cmap=brewer_bg)
+    plt.title('Liquid Cloud Mass Fraction at Longitude 0 [kg kg-1]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    iplt.contourf((cloud_volume[time_slice,:,:,36]+cloud_volume[time_slice,:,:,108])/2, brewer_bg.N, cmap=brewer_bg)
+    plt.title('Cloud Volume Fraction at Terminators', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    iplt.contourf((liquid_cloud[time_slice,:,:,36]+liquid_cloud[time_slice,:,:,108])/2, brewer_bg.N, cmap=brewer_bg)
+    plt.title('Liquid Cloud Volume Fraction at Terminators', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    iplt.contourf((ice_cloud[time_slice,:,:,36]+ice_cloud[time_slice,:,:,108])/2, brewer_bg.N, cmap=brewer_bg)
+    plt.title('Ice Cloud Volume Fraction at Terminators', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    iplt.contourf((ice_condensate[time_slice,:,:,36]+ice_condensate[time_slice,:,:,108])/2, brewer_bg.N, cmap=brewer_bg)
+    plt.title('Ice Cloud Mass Fraction at Terminators [kg kg-1]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    iplt.contourf((liquid_condensate[time_slice,:,:,36]+liquid_condensate[time_slice,:,:,108])/2, brewer_bg.N, cmap=brewer_bg)
+    plt.title('Liquid Cloud Mass Fraction at Terminators [kg kg-1]', y=1.05)
+    plt.ylabel('Height [m]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    
+    
 def check_periodicity(data):
     
     """ Check for periodicity in a 1-D numpy array 
@@ -1018,14 +1127,14 @@ def plot_cloud_variability(cubes):
         if cube.long_name == 'cloud_area_fraction_assuming_maximum_random_overlap':
             cloud_cover = cube.copy()
     
-    data = cloud_cover.data
+    data = cloud_cover[1000:,:,:].data
     spatial_stdev = np.std(data, axis=0)
     
     plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev, 72, axis=1), cmap=brewer_bg)
     plt.title('Standard Deviation in Cloud Cover [Area Fraction]')
-    plt.ylabel('Longitude [degrees]')
-    plt.xlabel('Latitude [degrees]')
+    plt.ylabel('Latitude [degrees]')
+    plt.xlabel('Longitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
     plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
     plt.colorbar(pad=0.1)
@@ -1042,14 +1151,14 @@ def plot_surftemp_variability(cubes):
             
             if len(surface_temp.cell_methods) != 0 and surface_temp.cell_methods[0].method == 'mean':
     
-                data = surface_temp.data
+                data = surface_temp[24:,:,:].data
                 spatial_stdev = np.std(data, axis=0)
             
                 plt.figure(figsize=(10,4))
                 plt.contourf(np.roll(spatial_stdev, 72, axis=1), cmap=brewer_reds)
                 plt.title('Standard Deviation in Mean Surface Temperature [K]')
-                plt.ylabel('Longitude [degrees]')
-                plt.xlabel('Latitude [degrees]')
+                plt.ylabel('Latitude [degrees]')
+                plt.xlabel('Longitude [degrees]')
                 plt.yticks((0,45,89),('90S', '0', '90N'))
                 plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
                 plt.colorbar(pad=0.1)
@@ -1071,7 +1180,7 @@ def plot_airtemp_variability(cubes, level=(14,24,34)):
     p0.convert_units(air_pressure.units)
     absolute_temp = potential_temp*((air_pressure/p0)**(287.05/1005)) # R and cp in J/kgK for 300K
     
-    data = absolute_temp.data
+    data = absolute_temp[24:,:,:,:].data
     spatial_stdev = np.std(data, axis=0)
     
     plt.figure(figsize=(10,4))
@@ -1107,14 +1216,29 @@ def plot_airtemp_variability(cubes, level=(14,24,34)):
 
 def plot_humidity_variability(cubes, level=(14,24,34)):
     
-    """ Plot spatial standard deviation in mean air temperature at levels"""
+    """ Plot spatial standard deviation in specific humidity at levels"""
     
     for cube in cubes:
         if cube.standard_name == 'specific_humidity':
             spec_humid = cube.copy()
     
+    spec_humid = spec_humid[500:,:,:,:]
+    flattened = spec_humid.collapsed('model_level_number', iris.analysis.MEAN)
     data = spec_humid.data
+    flattened_data = flattened.data
     spatial_stdev = np.std(data, axis=0)
+    flattened_stdev = np.std(flattened_data, axis=0)
+    
+    plt.figure(figsize=(10,4))
+    plt.contourf(np.roll(flattened_stdev[:,:], 72, axis=1), cmap=brewer_reds)
+    plt.title('Standard Deviation in Specific Humidity Column [kg kg-1]')
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.yticks((0,45,89),('90S', '0', '90N'))
+    plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
     
     plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev[level[0],:,:], 72, axis=1), cmap=brewer_reds)
@@ -1146,10 +1270,44 @@ def plot_humidity_variability(cubes, level=(14,24,34)):
     plt.colorbar(pad=0.1)
     plt.show()
     
-
+def zonal_heat_transport(cubes, time_slice=-1):
+    
+    """ Total eastward heat transport at longitude theta """
+            
+    for cube in cubes:
+        if cube.standard_name == 'toa_incoming_shortwave_flux':
+            incoming_rad = cube.copy()
+        if cube.standard_name == 'toa_outgoing_longwave_flux':
+            outgoing_lw = cube.copy()
+        if cube.standard_name == 'toa_outgoing_shortwave_flux':
+            outgoing_sw = cube.copy()
+        if cube.standard_name == 'surface_net_downward_shortwave_flux':
+            surface_sw_rad = cube.copy()   
             
     
-        
+    lats = incoming_rad.coord('latitude')
+    longs = incoming_rad.coord('longitude')
+
+    if lats.bounds == None:
+        incoming_rad.coord('latitude').guess_bounds()
+    if longs.bounds == None:
+        incoming_rad.coord('longitude').guess_bounds()
+    
+    grid_areas = iris.analysis.cartography.area_weights(incoming_rad)
+    print(grid_areas.shape)
+    radiation_difference = incoming_rad[time_slice,:,:].data - outgoing_lw[time_slice,:,:].data - outgoing_sw[time_slice,:,:].data
+    radiation_difference_watts = radiation_difference*grid_areas[time_slice,:,:]
+    print(radiation_difference_watts.shape)
+            
+    plt.figure(figsize=(10,4))
+    plt.contourf(np.roll(radiation_difference_watts[:,:], 72, axis=1), cmap=brewer_redblu)
+    plt.title('Radiation imbalance [W]')
+    plt.ylabel('Longitude [degrees]')
+    plt.xlabel('Latitude [degrees]')
+    plt.yticks((0,45,89),('90S', '0', '90N'))
+    plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
+    plt.colorbar(pad=0.1)
+    plt.show()
     
 
 # if __name__ == '__main__':
