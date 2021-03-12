@@ -50,10 +50,17 @@ def calculate_120day_mean(cubes):
             
     dayside = x_wind.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -90 <= v <= 90))
     nightside = x_wind.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
-    dayside = dayside[-4:,:,:,:]
-    nightside = nightside[-4,:,:,:]
-    dayside_zonal_mean = dayside.collapsed(['time', 'longitude'], iris.analysis.MEAN)
-    nightside_zonal_mean = nightside.collapsed(['time','longitude'], iris.analysis.MEAN)
+    
+    dayside = dayside.collapsed('longitude', iris.analysis.MEAN)
+    nightside = nightside.collapsed('longitude', iris.analysis.MEAN)
+    
+    dayside_meaned = np.mean(dayside.data.reshape(-1,4,60,90),axis=1)
+    nightside_meaned = np.mean(nightside.data.reshape(-1,4,60,90),axis=1)
+    dayside[-15:,:,:].data = dayside_meaned
+    nightside[-15:,:,:].data = nightside_meaned
+    
+    dayside_zonal_mean = dayside[-15:,:,:]
+    nightside_zonal_mean = nightside[-15:,:,:]
     
     return dayside_zonal_mean, nightside_zonal_mean
     
@@ -63,35 +70,35 @@ def gif_dayside_wind(i, dayside_zonal_mean):
     CS_day = iplt.contourf(dayside_zonal_mean[i,:,:], levels=np.linspace(-100,140,20), cmap=brewer_redblu)
 #    iplt.contourf(dayside_zonal_mean[i,:,:], brewer_redblu.N, cmap=brewer_redblu)
 
-    plt.title('Dayside Zonal Mean Zonal Wind [m s-1], month %s' %(i+1), y=1.05)
+    plt.title('Dayside Zonal Mean Zonal Wind [m s-1], 4month %s' %(i+1), y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
     plt.clabel(CS_day, inline=False, colors='k', fmt='%1.1f')
     plt.colorbar(pad=0.1)
     
 dayside_frames = []
-for i in range(60):
+for i in range(15):
     dayside_frame = gif_dayside_wind(i, dayside_zonal_mean)
     dayside_frames.append(dayside_frame)
 
-gif.save(dayside_frames, str(savepath) + '/dayside_zonal_meanwind_fixed.gif', duration = 30, unit = 's', between='startend')
+gif.save(dayside_frames, str(savepath) + '/dayside_zonal_120daymeanwind_fixed.gif', duration = 30, unit = 's', between='startend')
 
 @gif.frame
 def gif_nightside_wind(i, nightside_zonal_mean):  
     
     CS_night = iplt.contourf(nightside_zonal_mean[i,:,:], levels=np.linspace(-100,140,20), cmap=brewer_redblu)
-    plt.title('Nightside Zonal Mean Zonal Wind [m s-1], month %s' %(i+1), y=1.05)
+    plt.title('Nightside Zonal Mean Zonal Wind [m s-1], 4month %s' %(i+1), y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
     plt.clabel(CS_night, inline=False, colors='k', fmt='%1.1f')
     plt.colorbar(pad=0.1)
 
 nightside_frames = []
-for i in range(60):
+for i in range(15):
     nightside_frame = gif_nightside_wind(i, nightside_zonal_mean)
     nightside_frames.append(nightside_frame)
     
-gif.save(nightside_frames, str(savepath) + '/nightside_zonal_meanwind_fixed.gif', duration = 30, unit = 's', between='startend')
+gif.save(nightside_frames, str(savepath) + '/nightside_zonal_120daymeanwind_fixed.gif', duration = 30, unit = 's', between='startend')
 
 """ CODE BLOCK FOR ZONAL MEAN SPECIFIC HUMIDITY """
 

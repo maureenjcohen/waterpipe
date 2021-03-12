@@ -100,10 +100,10 @@ def plot_zonal_line(cubes):
         
     dayside = x_wind.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -90 <= v <= 90))
     nightside = x_wind.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
-    day_grid = iris.analysis.cartography.area_weights(dayside[-4:,:,:,:])
-    night_grid = iris.analysis.cartography.area_weights(nightside[-4:,:,:,:])
-    dayside = dayside[-4:,:,:,:]
-    nightside = nightside[-4:,:,:,:]
+    day_grid = iris.analysis.cartography.area_weights(dayside[-12:,:,:,:])
+    night_grid = iris.analysis.cartography.area_weights(nightside[-12:,:,:,:])
+    dayside = dayside[-12:,:,:,:]
+    nightside = nightside[-12:,:,:,:]
     
     dayside_mean = dayside.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
     nightside_mean = nightside.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)
@@ -290,6 +290,106 @@ def plot_zwind(cubes, time_slice=-1):
     plt.show()
     
 
+def plot_hovmoellerx(cubes):
+    
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube.copy()
+    
+    height = x_wind.shape[1]
+    run_length = x_wind.shape[0]
+    lats = x_wind.coord('latitude')
+    longs = x_wind.coord('longitude')
+
+    if lats.bounds == None:
+        x_wind.coord('latitude').guess_bounds()
+    if longs.bounds == None:
+        x_wind.coord('longitude').guess_bounds()
+        
+    dayside = x_wind.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -10<= v <= 10))
+    nightside = x_wind.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -10 <= v <= 10))
+    day_grid = iris.analysis.cartography.area_weights(dayside)
+    night_grid = iris.analysis.cartography.area_weights(nightside)
+    
+    dayside_mean = dayside.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
+    nightside_mean = nightside.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)
+    
+    # dayside_zonal_mean = dayside.collapsed('longitude', iris.analysis.MEAN)
+    # nightside_zonal_mean = nightside.collapsed('longitude', iris.analysis.MEAN)  
+    
+    # months = DimCoord((np.arange(0,run_length)), standard_name='time', units='months')
+
+    iplt.contourf(dayside_mean, levels=np.linspace(-80,130,20), cmap=brewer_redblu)
+    plt.title('Dayside Mean Zonal Equatorial Wind [m s-1]')
+    plt.xlabel('Time')
+    plt.ylabel('Height [m]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    iplt.contourf(nightside_mean, levels=np.linspace(-80,130,20), cmap=brewer_redblu)
+    plt.title('Nightside Mean Zonal Equatorial Wind [m s-1]')
+    plt.xlabel('Time')
+    plt.ylabel('Height [m]')
+    plt.colorbar(pad=0.1)
+    plt.show()    
+    
+    # iplt.contourf(dayside_zonal_mean[:,40], levels=np.linspace(-80,130,20), cmap=brewer_redblu)
+    # plt.title('Dayside Mean Zonal Wind at 40 km [m s-1]')
+    # plt.xlabel('Time')
+    # plt.ylabel('Latitude')
+    # plt.colorbar(pad=0.1)
+    # plt.show()
+    
+    # iplt.contourf(nightside_zonal_mean[:,40], levels=np.linspace(-80,130,20), cmap=brewer_redblu)
+    # plt.title('Nightside Mean Zonal Wind at 40 km [m s-1]')
+    # plt.xlabel('Time')
+    # plt.ylabel('Latitude')
+    # plt.colorbar(pad=0.1)
+    # plt.show()
+    
+def plot_hovmoellerz(cubes):
+    
+    for cube in cubes:
+        if cube.standard_name == 'upward_air_velocity':
+            z_wind = cube.copy()
+    
+    height = z_wind.shape[1]
+    run_length = z_wind.shape[0]
+    lats = z_wind.coord('latitude')
+    longs = z_wind.coord('longitude')
+
+    if lats.bounds == None:
+        z_wind.coord('latitude').guess_bounds()
+    if longs.bounds == None:
+        z_wind.coord('longitude').guess_bounds()
+        
+    dayside = z_wind.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -2 <= v <= 2))
+    nightside = z_wind.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -2 <= v <= 2))
+    day_grid = iris.analysis.cartography.area_weights(dayside)
+    night_grid = iris.analysis.cartography.area_weights(nightside)
+    global_grid = iris.analysis.cartography.area_weights(z_wind)
+    
+    dayside_mean = dayside.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
+    nightside_mean = nightside.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)
+    global_mean = z_wind.collapsed(['latitude','longitude'], iris.analysis.MEAN, weights=global_grid)
+    months = DimCoord((np.arange(0,run_length)), standard_name='time', units='months')
+
+    iplt.contourf(dayside_mean, brewer_reds.N, cmap=brewer_reds)
+    plt.title('Dayside Mean Equatorial Z-Wind [m s-1]')
+    plt.xlabel('Time')
+    plt.ylabel('Height [m]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+    
+    iplt.contourf(nightside_mean, brewer_reds.N, cmap=brewer_reds)
+    plt.title('Nightside Mean Equatorial Z-Wind [m s-1]')
+    plt.xlabel('Time')
+    plt.ylabel('Height [m]')
+    plt.colorbar(pad=0.1)
+    plt.show()
+
+
+
 def calculate_timescales(cubes, stellar_constant=837):
     
     """ Implements formula from Koll & Abbot 2016 for:
@@ -348,5 +448,88 @@ def calculate_timescales(cubes, stellar_constant=837):
     return ratio
 
     
+def qbo_period(cubes, periodicity=False):
+    
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube.copy()
+    
+    height = x_wind.shape[1]
+    run_length = x_wind.shape[0]
+    lats = x_wind.coord('latitude')
+    longs = x_wind.coord('longitude')
+
+    if lats.bounds == None:
+        x_wind.coord('latitude').guess_bounds()
+    if longs.bounds == None:
+        x_wind.coord('longitude').guess_bounds()
         
+    strat = x_wind.extract(iris.Constraint(longitude=lambda v: 355 < v <= 359 or 0 <= v <= 4, latitude=lambda v: -4 <= v <= 4, model_level_number=40))
+    trop = x_wind.extract(iris.Constraint(longitude=lambda v: 355 < v <= 359 or 0 <= v <= 4, latitude=lambda v: -4 <= v <= 4, model_level_number=24))
+    high = x_wind.extract(iris.Constraint(longitude=lambda v: 355 < v <= 359 or 0 <= v <= 4, latitude=lambda v: -4 <= v <= 4, model_level_number=50))
+    low = x_wind.extract(iris.Constraint(longitude=lambda v: 355 < v <= 359 or 0 <= v <= 4, latitude=lambda v: -4 <= v <= 4, model_level_number=29))
+    strat_grid = iris.analysis.cartography.area_weights(strat)
+    trop_grid = iris.analysis.cartography.area_weights(trop)
+    high_grid = iris.analysis.cartography.area_weights(high)
+    low_grid = iris.analysis.cartography.area_weights(low)
+    
+    strat_mean = strat.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=strat_grid)
+    trop_mean = trop.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=trop_grid)
+    
+    high_mean = high.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=high_grid)
+    low_mean = low.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=low_grid)
+    
+    plt.plot(np.arange(0,run_length), high_mean.data, linestyle='--', color='r', label='50 km')
+    plt.plot(np.arange(0,run_length), strat_mean.data, linestyle='-', color='r', label='40 km')
+    plt.plot(np.arange(0,run_length), low_mean.data, linestyle='--', color='b', label='30 km')
+    plt.plot(np.arange(0,run_length), trop_mean.data, linestyle='-', color='b', label='25 km')
+    plt.title('Mean Substellar Zonal Wind')
+    plt.xlabel('Time [months]') 
+    plt.ylabel('Velocity [m s-1]')
+    plt.legend()
+    plt.show()
+    
+    if periodicity == True:
+        
+        data = np.array(high_mean.data)
+        fft = sp.fftpack.fft(data)
+        psd = np.abs(fft)**2
+        freq = sp.fftpack.fftfreq(len(psd), 1./run_length)
+        i = freq > 0
+        
+        data2 = np.array(strat_mean.data)
+        fft2 = sp.fftpack.fft(data2)
+        psd2 = np.abs(fft2)**2
+        freq2 = sp.fftpack.fftfreq(len(psd2), 1./run_length)
+        i2 = freq2 > 0
+        
+        periods_50km = np.round(run_length/freq[i], 2)
+        fig, ax = plt.subplots(1,1,figsize=(8,4))
+        ax.plot(periods_50km, psd[i])
+        ax.set_xlabel('Period [months]')
+        ax.set_ylabel('PSD')
+        ax.set_title('Periodicity of mean substellar zonal wind at 50 km')
+        psd_sorted = -np.sort(-psd[i])
+        top_three = psd_sorted[:3]
+        for i,j in zip(periods_50km,psd[i]):
+            if j in top_three:
+                ax.annotate('%s' %i, xy=(i,j), xytext=(2, 5), textcoords='offset points')
+        # plt.annotate(str(maxpsd), location)
+        plt.show()
+        
+        periods_40km = np.round(run_length/freq2[i2], 2)
+        fig, ax = plt.subplots(1,1,figsize=(8,4))
+        ax.plot(periods_40km, psd2[i2])
+        ax.set_xlabel('Period [months]')
+        ax.set_ylabel('PSD')
+        ax.set_title('Periodicity of mean substellar zonal wind at 40 km')
+        psd_sorted2 = -np.sort(-psd2[i2])
+        top_three2 = psd_sorted2[:3]
+        for i,j in zip(periods_40km,psd2[i2]):
+            if j in top_three2:
+                ax.annotate('%s' %i, xy=(i,j), xytext=(2, 5), textcoords='offset points')
+        # plt.annotate(str(maxpsd), location)
+        plt.show()
+        
+    
     

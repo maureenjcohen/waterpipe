@@ -504,9 +504,7 @@ def plot_outgoing(cubes):
     plt.yticks((0,45,89),('90S', '0', '90N'))
     plt.xticks((0,36, 72, 104, 143),('0', '90E', '180E/W', '90W','0'))
     plt.colorbar(pad=0.1)
-    plt.show() 
-                
-                
+    plt.show()
 
 
 def plot_humidity(cubes, level=14, time_slice=-1):
