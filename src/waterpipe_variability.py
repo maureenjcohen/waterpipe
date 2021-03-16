@@ -27,6 +27,20 @@ brewer_reds = mpl_cm.get_cmap('brewer_Reds_09')
 brewer_redblu = mpl_cm.get_cmap('brewer_RdBu_11')
 # Load colormaps to use in plots
 
+def get_heights(cubes):
+    
+    """ Extract altitude information from air pressure cube
+        Can be used with matplotlib contourf when Iris isn't playing nice """ 
+    
+    for cube in cubes:
+        if cube.standard_name == 'air_pressure':
+            pressure = cube.copy()
+            
+    heights = pressure.coord('level_height').points
+    
+    return heights
+    
+
 def cloudswirls(cubes):
     
     for cube in cubes:

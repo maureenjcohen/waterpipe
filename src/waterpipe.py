@@ -329,10 +329,13 @@ def plot_xtemp(cubes, time_slice=-1):
     return absolute_temp
 
 
-def plot_stratosphere(cube, level=25):
+def plot_stratosphere(cube, level=50):
     
     """ Plot average stratospheric temperature over time
         Input: absolute temperature cube, level of tropopause       """
+
+    if cube.shape[1] < level:
+        raise Exception('Cube height is less than stratosphere height. Get a taller atmosphere.')
     
     absolute_temp = cube.copy()
     stratosphere = absolute_temp[:,level:-1,:,:]
@@ -522,6 +525,8 @@ def plot_humidity(cubes, level=14, time_slice=-1):
     
     lats = spec_humidity.coord('latitude')
     longs = spec_humidity.coord('longitude')
+    heights = np.round(spec_humidity.coord('level_height').points,0)
+
 
     if lats.bounds == None:
         spec_humidity.coord('latitude').guess_bounds()
@@ -569,7 +574,7 @@ def plot_humidity(cubes, level=14, time_slice=-1):
     iplt.contourf(spec_humidity[time_slice,level,:,:], brewer_bg.N, cmap=brewer_bg)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
-    plt.title('Specific Humidity at h=%s km [kg kg-1]'%(level+1), y=1.20)
+    plt.title('Specific Humidity at h=%s km [kg kg-1]'%(heights[level]), y=1.20)
     plt.colorbar(pad=0.1)
     plt.show()
     
@@ -1116,6 +1121,7 @@ def plot_efficiency(cubes):
     plt.ylabel('Ratio')
     plt.xlabel('Time [months]')
     plt.show()
+    
 
 def plot_cloud_variability(cubes):
     
@@ -1163,7 +1169,7 @@ def plot_surftemp_variability(cubes):
                 plt.show()
                 
 
-def plot_airtemp_variability(cubes, level=(14,24,34)):
+def plot_airtemp_variability(cubes, level=35):
     
     """ Plot spatial standard deviation in mean air temperature at levels"""
     
@@ -1172,8 +1178,8 @@ def plot_airtemp_variability(cubes, level=(14,24,34)):
             potential_temp = cube.copy()
         if cube.standard_name == 'air_pressure':
             air_pressure = cube.copy()
-
             
+    heights = np.round(air_pressure.coord('level_height').points,0)
     p0 = iris.coords.AuxCoord(100000.0, long_name='reference_pressure', units='Pa')
     p0.convert_units(air_pressure.units)
     absolute_temp = potential_temp*((air_pressure/p0)**(287.05/1005)) # R and cp in J/kgK for 300K
@@ -1183,7 +1189,7 @@ def plot_airtemp_variability(cubes, level=(14,24,34)):
     
     plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev[level[0],:,:], 72, axis=1), cmap=brewer_reds)
-    plt.title('Standard Deviation in Air Temperature [K], height=%s km' %(level[0]+1))
+    plt.title('Standard Deviation in Air Temperature [K], height=%s km' %(heights[level]))
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
@@ -1193,7 +1199,7 @@ def plot_airtemp_variability(cubes, level=(14,24,34)):
     
     plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev[level[1],:,:], 72, axis=1), cmap=brewer_reds)
-    plt.title('Standard Deviation in Air Temperature [K], height=%s km' %(level[1]+1))
+    plt.title('Standard Deviation in Air Temperature [K], height=%s km' %(heights[level]))
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
@@ -1203,7 +1209,7 @@ def plot_airtemp_variability(cubes, level=(14,24,34)):
     
     plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev[level[2],:,:], 72, axis=1), cmap=brewer_reds)
-    plt.title('Standard Deviation in Air Temperature [K], height=%s km' %(level[2]+1))
+    plt.title('Standard Deviation in Air Temperature [K], height=%s km' %(heights[level]))
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
@@ -1212,7 +1218,7 @@ def plot_airtemp_variability(cubes, level=(14,24,34)):
     plt.show()
     
 
-def plot_humidity_variability(cubes, level=(14,24,34)):
+def plot_humidity_variability(cubes, level=35):
     
     """ Plot spatial standard deviation in specific humidity at levels"""
     
@@ -1220,6 +1226,8 @@ def plot_humidity_variability(cubes, level=(14,24,34)):
         if cube.standard_name == 'specific_humidity':
             spec_humid = cube.copy()
     
+    heights = np.round(spec_humid.coord('level_height').points,0)
+
     spec_humid = spec_humid[500:,:,:,:]
     flattened = spec_humid.collapsed('model_level_number', iris.analysis.MEAN)
     data = spec_humid.data
@@ -1235,12 +1243,11 @@ def plot_humidity_variability(cubes, level=(14,24,34)):
     plt.yticks((0,45,89),('90S', '0', '90N'))
     plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
     plt.colorbar(pad=0.1)
-    plt.show()
-    
+    plt.show()    
     
     plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev[level[0],:,:], 72, axis=1), cmap=brewer_reds)
-    plt.title('Standard Deviation in Specific Humidity [kg kg-1], height=%s km' %(level[0]+1))
+    plt.title('Standard Deviation in Specific Humidity [kg kg-1], height=%s km' %(heights[level]))
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
@@ -1250,7 +1257,7 @@ def plot_humidity_variability(cubes, level=(14,24,34)):
     
     plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev[level[1],:,:], 72, axis=1), cmap=brewer_reds)
-    plt.title('Standard Deviation in Specific Humidity [kg kg-1], height=%s km' %(level[1]+1))
+    plt.title('Standard Deviation in Specific Humidity [kg kg-1], height=%s km' %(heights[level]))
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
@@ -1260,7 +1267,7 @@ def plot_humidity_variability(cubes, level=(14,24,34)):
     
     plt.figure(figsize=(10,4))
     plt.contourf(np.roll(spatial_stdev[level[2],:,:], 72, axis=1), cmap=brewer_reds)
-    plt.title('Standard Deviation in Specific Humidity [kg kg-1], height=%s km' %(level[2]+1))
+    plt.title('Standard Deviation in Specific Humidity [kg kg-1], height=%s km' %(heights[level]))
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
@@ -1268,6 +1275,7 @@ def plot_humidity_variability(cubes, level=(14,24,34)):
     plt.colorbar(pad=0.1)
     plt.show()
     
+
 def zonal_heat_transport(cubes, time_slice=-1):
     
     """ Total eastward heat transport at longitude theta """

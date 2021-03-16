@@ -90,6 +90,8 @@ def plot_zonal_line(cubes):
             x_wind = cube.copy()
     
     height = x_wind.shape[1]
+    heights = np.round(x_wind.coord('level_height').points,0)
+
     lats = x_wind.coord('latitude')
     longs = x_wind.coord('longitude')
 
@@ -115,27 +117,27 @@ def plot_zonal_line(cubes):
     dayside_mean = dayside_mean.collapsed('time',iris.analysis.MEAN)
     nightside_mean = nightside_mean.collapsed('time',iris.analysis.MEAN)
                                  
-    plt.plot(dayside_mean.data, np.arange(0,height))
+    plt.plot(dayside_mean.data, np.array(heights))
     plt.title('Dayside Mean Zonal Wind [m s-1]')
-    plt.ylabel('Level')
+    plt.ylabel('Height [m]')
     plt.xlabel('Speed [m s-1]')  
     plt.show()
     
-    plt.plot(nightside_mean.data, np.arange(0,height))
+    plt.plot(nightside_mean.data, np.array(heights))
     plt.title('Nightside Mean Zonal Wind [m s-1]')
-    plt.ylabel('Level')
+    plt.ylabel('Height [m]')
     plt.xlabel('Speed [m s-1]')  
     plt.show()
     
-    plt.plot(dayside_stdev, np.arange(0,height))
+    plt.plot(dayside_stdev, np.array(heights))
     plt.title('Dayside Mean Zonal Wind StDev [m s-1]')
-    plt.ylabel('Level')
+    plt.ylabel('Height [m]')
     plt.xlabel('Speed [m s-1]')  
     plt.show()
     
-    plt.plot(nightside_stdev, np.arange(0,height))
+    plt.plot(nightside_stdev, np.array(heights))
     plt.title('Nightside Mean Zonal Wind StDev [m s-1]')
-    plt.ylabel('Level')
+    plt.ylabel('Height [m]')
     plt.xlabel('Speed [m s-1]')  
     plt.show()
     
@@ -173,6 +175,7 @@ def plot_streamfunction(cubes, level=14, time_slice=-1, omega=0.64617667):
             z_wind = cube.copy()    
     
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+    heights = np.round(x_wind.coord('level_height').points,0)
 
     wind = windspharm.iris.VectorWind(x_wind, y_wind)
     streamfunction, velpotential = wind.sfvp()
@@ -181,7 +184,7 @@ def plot_streamfunction(cubes, level=14, time_slice=-1, omega=0.64617667):
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.colorbar(orientation='horizontal')
-    plt.title('Streamfunction [$10^6$ m2 s-1], h = %s km' %(level+1), y=1.20)
+    plt.title('Streamfunction [$10^6$ m2 s-1], h = %s km' %(heights[level]), y=1.20)
     plt.show()
 
     planet_vort = wind.planetaryvorticity(omega=omega)
@@ -189,7 +192,7 @@ def plot_streamfunction(cubes, level=14, time_slice=-1, omega=0.64617667):
     absolute_vort = wind.absolutevorticity()
     
     iplt.contourf(relative_vort[time_slice,level,:,:], brewer_bg.N, cmap=brewer_bg)
-    plt.title('Relative Vorticity, h = %s km' %(level+1), y=1.20)
+    plt.title('Relative Vorticity, h = %s km' %(heights[level]), y=1.20)
     plt.ylabel('Latitude [degrees]')
     plt.xlabel('Longitude [degrees]')
     ax = plt.gca()
@@ -218,13 +221,14 @@ def plot_streamlines(cubes, level=14, time_slice=-1):
             y_wind = cube.copy()
  
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+    heights = np.round(x_wind.coord('level_height').points,0)
    
     speed = iris.analysis.maths.apply_ufunc(np.sqrt, (x_wind**2 + y_wind**2))
     
     iplt.contourf(x_wind[time_slice,level,:,:], brewer_reds.N, cmap=brewer_reds)
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
-    plt.title('Zonal Wind Speed, h=%s km [m s-1]' %(level+1), y=1.20)
+    plt.title('Zonal Wind Speed, h=%s km [m s-1]' %(heights[level]), y=1.20)
     plt.colorbar(pad=0.1)
     plt.show()
 
@@ -234,7 +238,7 @@ def plot_streamlines(cubes, level=14, time_slice=-1):
     # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
     # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
     fig.colorbar(strm.lines)
-    plt.title('Wind speed and direction [m s-1], h=%s km' %(level+1))
+    plt.title('Wind speed and direction [m s-1], h=%s km' %(heights[level]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
     plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
@@ -290,63 +294,6 @@ def plot_zwind(cubes, time_slice=-1):
     plt.show()
     
 
-def plot_hovmoellerx(cubes):
-    
-    for cube in cubes:
-        if cube.standard_name == 'x_wind':
-            x_wind = cube.copy()
-    
-    height = x_wind.shape[1]
-    run_length = x_wind.shape[0]
-    lats = x_wind.coord('latitude')
-    longs = x_wind.coord('longitude')
-
-    if lats.bounds == None:
-        x_wind.coord('latitude').guess_bounds()
-    if longs.bounds == None:
-        x_wind.coord('longitude').guess_bounds()
-        
-    dayside = x_wind.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -10<= v <= 10))
-    nightside = x_wind.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -10 <= v <= 10))
-    day_grid = iris.analysis.cartography.area_weights(dayside)
-    night_grid = iris.analysis.cartography.area_weights(nightside)
-    
-    dayside_mean = dayside.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
-    nightside_mean = nightside.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)
-    
-    # dayside_zonal_mean = dayside.collapsed('longitude', iris.analysis.MEAN)
-    # nightside_zonal_mean = nightside.collapsed('longitude', iris.analysis.MEAN)  
-    
-    # months = DimCoord((np.arange(0,run_length)), standard_name='time', units='months')
-
-    iplt.contourf(dayside_mean, levels=np.linspace(-80,130,20), cmap=brewer_redblu)
-    plt.title('Dayside Mean Zonal Equatorial Wind [m s-1]')
-    plt.xlabel('Time')
-    plt.ylabel('Height [m]')
-    plt.colorbar(pad=0.1)
-    plt.show()
-    
-    iplt.contourf(nightside_mean, levels=np.linspace(-80,130,20), cmap=brewer_redblu)
-    plt.title('Nightside Mean Zonal Equatorial Wind [m s-1]')
-    plt.xlabel('Time')
-    plt.ylabel('Height [m]')
-    plt.colorbar(pad=0.1)
-    plt.show()    
-    
-    # iplt.contourf(dayside_zonal_mean[:,40], levels=np.linspace(-80,130,20), cmap=brewer_redblu)
-    # plt.title('Dayside Mean Zonal Wind at 40 km [m s-1]')
-    # plt.xlabel('Time')
-    # plt.ylabel('Latitude')
-    # plt.colorbar(pad=0.1)
-    # plt.show()
-    
-    # iplt.contourf(nightside_zonal_mean[:,40], levels=np.linspace(-80,130,20), cmap=brewer_redblu)
-    # plt.title('Nightside Mean Zonal Wind at 40 km [m s-1]')
-    # plt.xlabel('Time')
-    # plt.ylabel('Latitude')
-    # plt.colorbar(pad=0.1)
-    # plt.show()
-    
 def plot_hovmoellerz(cubes):
     
     for cube in cubes:
@@ -446,90 +393,118 @@ def calculate_timescales(cubes, stellar_constant=837):
     print('Radiative timescale is ' + str(trad) + ' seconds')
     
     return ratio
+    
 
-    
-def qbo_period(cubes, periodicity=False):
-    
+def rossby_source(cubes, time_slice=-1, level=0):  
+            
     for cube in cubes:
         if cube.standard_name == 'x_wind':
             x_wind = cube.copy()
+        if cube.standard_name == 'y_wind':
+            y_wind = cube.copy()
+ 
+    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
     
-    height = x_wind.shape[1]
-    run_length = x_wind.shape[0]
-    lats = x_wind.coord('latitude')
-    longs = x_wind.coord('longitude')
-
-    if lats.bounds == None:
-        x_wind.coord('latitude').guess_bounds()
-    if longs.bounds == None:
-        x_wind.coord('longitude').guess_bounds()
-        
-    strat = x_wind.extract(iris.Constraint(longitude=lambda v: 355 < v <= 359 or 0 <= v <= 4, latitude=lambda v: -4 <= v <= 4, model_level_number=40))
-    trop = x_wind.extract(iris.Constraint(longitude=lambda v: 355 < v <= 359 or 0 <= v <= 4, latitude=lambda v: -4 <= v <= 4, model_level_number=24))
-    high = x_wind.extract(iris.Constraint(longitude=lambda v: 355 < v <= 359 or 0 <= v <= 4, latitude=lambda v: -4 <= v <= 4, model_level_number=50))
-    low = x_wind.extract(iris.Constraint(longitude=lambda v: 355 < v <= 359 or 0 <= v <= 4, latitude=lambda v: -4 <= v <= 4, model_level_number=29))
-    strat_grid = iris.analysis.cartography.area_weights(strat)
-    trop_grid = iris.analysis.cartography.area_weights(trop)
-    high_grid = iris.analysis.cartography.area_weights(high)
-    low_grid = iris.analysis.cartography.area_weights(low)
+    winds = windspharm.iris.VectorWind(x_wind,y_wind)
     
-    strat_mean = strat.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=strat_grid)
-    trop_mean = trop.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=trop_grid)
+    eta = winds.absolutevorticity()
+    div = winds.divergence()
+    uchi, vchi = winds.irrotationalcomponent()
+    etax, etay = winds.gradient(eta)
+    etax.units = 'm**-1 s**-1'
+    etay.units = 'm**-1 s**-1'
     
-    high_mean = high.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=high_grid)
-    low_mean = low.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=low_grid)
+    S = eta*-1.*div-(uchi*etax+vchi*etay)
+    S.coord('longitude').attributes['circular'] = True
+    print(S.shape)
+    print(S)
     
-    plt.plot(np.arange(0,run_length), high_mean.data, linestyle='--', color='r', label='50 km')
-    plt.plot(np.arange(0,run_length), strat_mean.data, linestyle='-', color='r', label='40 km')
-    plt.plot(np.arange(0,run_length), low_mean.data, linestyle='--', color='b', label='30 km')
-    plt.plot(np.arange(0,run_length), trop_mean.data, linestyle='-', color='b', label='25 km')
-    plt.title('Mean Substellar Zonal Wind')
-    plt.xlabel('Time [months]') 
-    plt.ylabel('Velocity [m s-1]')
-    plt.legend()
+    clevs = [-30,-25,-20,-15,-10,-5,0,5,10,15,20,25,30]
+    iplt.contourf(S[time_slice,level,:,:]*1e11,clevs,cmap=brewer_redblu, extend='both')
+    ax = plt.gca()
+    ax.gridlines(draw_labels=True)
+    plt.colorbar(orientation='horizontal')
+    plt.title('Rossby Wave Source ($10^{-11}$s$^{-1}$)')
     plt.show()
+  
+
+def decomposition(cubes, time_slice=-1, level=0, vapour=False):  
+            
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube.copy()
+        if cube.standard_name == 'y_wind':
+            y_wind = cube.copy()
+        if cube.long_name == 'water_vapour_flux_x':
+            x_vapour = cube.copy()
+        if cube.long_name == 'water_vapour_flux_y':
+            y_vapour = cube.copy()
+ 
+    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+    y_vapour = y_vapour.regrid(x_vapour, iris.analysis.Linear())
+    heights = np.round(x_wind.coord('level_height').points,0)
     
-    if periodicity == True:
-        
-        data = np.array(high_mean.data)
-        fft = sp.fftpack.fft(data)
-        psd = np.abs(fft)**2
-        freq = sp.fftpack.fftfreq(len(psd), 1./run_length)
-        i = freq > 0
-        
-        data2 = np.array(strat_mean.data)
-        fft2 = sp.fftpack.fft(data2)
-        psd2 = np.abs(fft2)**2
-        freq2 = sp.fftpack.fftfreq(len(psd2), 1./run_length)
-        i2 = freq2 > 0
-        
-        periods_50km = np.round(run_length/freq[i], 2)
-        fig, ax = plt.subplots(1,1,figsize=(8,4))
-        ax.plot(periods_50km, psd[i])
-        ax.set_xlabel('Period [months]')
-        ax.set_ylabel('PSD')
-        ax.set_title('Periodicity of mean substellar zonal wind at 50 km')
-        psd_sorted = -np.sort(-psd[i])
-        top_three = psd_sorted[:3]
-        for i,j in zip(periods_50km,psd[i]):
-            if j in top_three:
-                ax.annotate('%s' %i, xy=(i,j), xytext=(2, 5), textcoords='offset points')
-        # plt.annotate(str(maxpsd), location)
-        plt.show()
-        
-        periods_40km = np.round(run_length/freq2[i2], 2)
-        fig, ax = plt.subplots(1,1,figsize=(8,4))
-        ax.plot(periods_40km, psd2[i2])
-        ax.set_xlabel('Period [months]')
-        ax.set_ylabel('PSD')
-        ax.set_title('Periodicity of mean substellar zonal wind at 40 km')
-        psd_sorted2 = -np.sort(-psd2[i2])
-        top_three2 = psd_sorted2[:3]
-        for i,j in zip(periods_40km,psd2[i2]):
-            if j in top_three2:
-                ax.annotate('%s' %i, xy=(i,j), xytext=(2, 5), textcoords='offset points')
-        # plt.annotate(str(maxpsd), location)
-        plt.show()
-        
+    winds = windspharm.iris.VectorWind(x_wind,y_wind)  
+    vapour = windspharm.iris.VectorWind(x_vapour,y_vapour)
+    uchi,vchi,upsi,vpsi = winds.helmholtz()
+    u2chi,v2chi,u2psi,v2psi = vapour.helmholtz()
     
+    chi_magnitude = iris.analysis.maths.apply_ufunc(np.sqrt, (uchi**2 + vchi**2))
+    psi_magnitude =  iris.analysis.maths.apply_ufunc(np.sqrt, (upsi**2 + vpsi**2))
+    chi2_magnitude = iris.analysis.maths.apply_ufunc(np.sqrt, (u2chi**2 + v2chi**2))
+    psi2_magnitude =  iris.analysis.maths.apply_ufunc(np.sqrt, (u2psi**2 + v2psi**2))
+
+    X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
+    fig = plt.figure(figsize = (10,4)) 
+    strm = plt.streamplot(X, Y, np.roll(uchi[time_slice,level,:,:].data, 72, axis=1), np.roll(vchi[time_slice,level,:,:].data, 72, axis=1), density = 0.5, color=np.roll(chi_magnitude[time_slice,level,:,:].data, 72, axis=1), cmap=brewer_reds)
+    # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
+    # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
+    fig.colorbar(strm.lines)
+    plt.title('Divergent component of wind [m s-1], h=%s m' %(heights[level]))
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+    plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
+    plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
+    plt.show() 
     
+    X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
+    fig = plt.figure(figsize = (10,4)) 
+    strm = plt.streamplot(X, Y, np.roll(upsi[time_slice,level,:,:].data, 72, axis=1), np.roll(vpsi[time_slice,level,:,:].data, 72, axis=1), density = 0.5, color=np.roll(psi_magnitude[time_slice,level,:,:].data, 72, axis=1), cmap=brewer_reds)
+    # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
+    # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
+    fig.colorbar(strm.lines)
+    plt.title('Rotational component of wind [m s-1], h=%s m' %(heights[level]))
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+    plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
+    plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
+    plt.show() 
+    
+    if vapour==True:
+    
+        X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
+        fig = plt.figure(figsize = (10,4)) 
+        strm = plt.streamplot(X, Y, np.roll(u2chi[time_slice,:,:].data, 72, axis=1), np.roll(v2chi[time_slice,:,:].data, 72, axis=1), density = 0.5, color=np.roll(chi2_magnitude[time_slice,:,:].data, 72, axis=1), cmap=brewer_reds)
+        # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
+        # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
+        fig.colorbar(strm.lines)
+        plt.title('Divergent component of vapour flux')
+        plt.xlabel('Longitude')
+        plt.ylabel('Latitude')
+        plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
+        plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
+        plt.show() 
+        
+        X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
+        fig = plt.figure(figsize = (10,4)) 
+        strm = plt.streamplot(X, Y, np.roll(u2psi[time_slice,:,:].data, 72, axis=1), np.roll(v2psi[time_slice,:,:].data, 72, axis=1), density = 0.5, color=np.roll(psi2_magnitude[time_slice,:,:].data, 72, axis=1), cmap=brewer_reds)
+        # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
+        # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
+        fig.colorbar(strm.lines)
+        plt.title('Rotational component of vapour flux')
+        plt.xlabel('Longitude')
+        plt.ylabel('Latitude')
+        plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
+        plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
+        plt.show() 
+  
