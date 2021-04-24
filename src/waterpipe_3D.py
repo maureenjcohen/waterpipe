@@ -8,6 +8,6 @@ Created on Tue Mar 16 20:29:06 2021
 Plotting functions with mlab
 
 """
-import iris
+import netcdf4
 import numpy as np
 from mayavi import mlab

@@ -241,7 +241,7 @@ def plot_streamlines(cubes, level=14, time_slice=-1):
     plt.title('Wind speed and direction [m s-1], h=%s km' %(heights[level]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
-    plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
     plt.show() 
 
@@ -252,9 +252,11 @@ def plot_zwind(cubes, time_slice=-1):
         if cube.standard_name == 'upward_air_velocity':
             z_wind = cube.copy()
             
-    dayside = z_wind.extract(iris.Constraint(longitude=lambda v: 270 < 359 or 0 <= v <= 90, latitude=lambda v: -90 <= v <= 90))
-    nightside = z_wind.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
-    
+    # dayside = z_wind.extract(iris.Constraint(longitude=lambda v: 270 < 359 or 0 <= v <= 90, latitude=lambda v: -90 <= v <= 90))
+    # nightside = z_wind.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
+    dayside = z_wind.intersection(longitude=(-90,90), latitude=(-90,90))    
+    nightside = z_wind.intersection(longitude=(90,270), latitude=(-90,90))
+
     dayside_zonal_mean = dayside.collapsed('longitude', iris.analysis.MEAN)
     nightside_zonal_mean = nightside.collapsed('longitude', iris.analysis.MEAN)
     
@@ -463,7 +465,7 @@ def decomposition(cubes, time_slice=-1, level=0, vapour=False):
     plt.title('Divergent component of wind [m s-1], h=%s m' %(heights[level]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
-    plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
     plt.show() 
     
@@ -476,7 +478,7 @@ def decomposition(cubes, time_slice=-1, level=0, vapour=False):
     plt.title('Rotational component of wind [m s-1], h=%s m' %(heights[level]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
-    plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
     plt.show() 
     
@@ -491,7 +493,7 @@ def decomposition(cubes, time_slice=-1, level=0, vapour=False):
         plt.title('Divergent component of vapour flux')
         plt.xlabel('Longitude')
         plt.ylabel('Latitude')
-        plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
+        plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
         plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
         plt.show() 
         
@@ -504,7 +506,86 @@ def decomposition(cubes, time_slice=-1, level=0, vapour=False):
         plt.title('Rotational component of vapour flux')
         plt.xlabel('Longitude')
         plt.ylabel('Latitude')
-        plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
+        plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
         plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
         plt.show() 
-  
+
+
+def plot_coriolis(cubes, omega=0.64617667e-05):
+    
+    for cube in cubes:
+        if cube.standard_name == 'air_potential_temperature':
+            theta = cube.copy()
+    
+    earth_omega = 7.2921159e-05
+    lats = theta.coord('latitude').points
+    lats_rad = (theta.coord('latitude').points)*(np.pi/180) # Latitudes in radians
+    coriolis = 2*omega*np.sin(lats_rad) # Coriolis force
+    coriolis_earth = 2*earth_omega*np.sin(lats_rad)
+    
+    plt.plot(lats, coriolis, color='b', label='Proxima Centauri b')
+    plt.plot(lats, coriolis_earth, color='r', label='Earth')
+    plt.title('Coriolis parameter')
+    plt.xlabel('Latitude [degrees]')
+    plt.ylabel('Coriolis parameter')
+    plt.annotate(r"${0:0.2e}$".format(coriolis[-1]), xy=(65,-0.000005), xytext=(0, 0), textcoords='offset points')
+    plt.annotate(r"${0:0.2e}$".format(coriolis_earth[-1]), xy=(65,0.00010), xytext=(0, 3), textcoords='offset points')
+    plt.legend()
+    plt.show()
+    
+
+def plot_pressure_force(cubes, time_slice=10, low=47, high=53):
+    
+    for cube in cubes:
+        if cube.standard_name == 'air_pressure':
+            pressure = cube.copy()
+        if cube.standard_name == 'air_potential_temperature':
+            theta = cube.copy()
+        if cube.long_name == 'density_r_r':
+            density_r = cube.copy()
+            
+    x_gradient = iris.analysis.calculus.differentiate(pressure, 'longitude')
+    longitudes = pressure.shape[3]/2     
+    heights = np.round(pressure.coord('level_height').points*1e-03,0)
+    
+    p0 = iris.coords.AuxCoord(100000.0, long_name='reference_pressure', units='Pa')
+    p0.convert_units(pressure.units)
+    temperature = theta*((pressure/p0)**(287.05/1005)) # R and cp in J/kgK for 300K
+    
+    R = 8.314 # ideal gas constant in J/K*mol
+    M = 28.0134e-03 # molar mass of N2 in kg/mol
+    
+    density = (pressure*R*temperature)/M
+#    density = density_r/(R*R)
+    pressure_force = -(1/density.data)*x_gradient.data
+    
+    plt.figure(figsize=(10,5))
+    plt.plot(np.arange(-longitudes, longitudes), np.roll(pressure_force[time_slice,38,45,:], 72))
+    plt.title('Longitudinal Pressure Gradient Acceleration at Equator, t=%s months, h=%s km' %(time_slice+1, heights[38]))
+    plt.xlabel('Longitude [degrees]')
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    plt.axvline(x=-36, color='r', linestyle='--')
+    plt.axvline(x=36, color='r', linestyle='--')
+    plt.ylabel('Pressure gradient acceleration [m s-2]')
+    plt.show()
+    
+    plt.figure(figsize=(10,5))
+    plt.plot(np.arange(-longitudes, longitudes), np.roll(pressure_force[time_slice,low,45,:], 72))
+    plt.title('Longitudinal Pressure Gradient Acceleration at Equator, t=%s months, h=%s km' %(time_slice+1, heights[low]))
+    plt.xlabel('Longitude [degrees]')
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    plt.axvline(x=-36, color='r', linestyle='--')
+    plt.axvline(x=36, color='r', linestyle='--')
+    plt.ylabel('Pressure gradient acceleration [m s-2]')
+    plt.show()
+    
+    plt.figure(figsize=(10,5))
+    plt.plot(np.arange(-longitudes, longitudes), np.roll(pressure_force[time_slice,high,45,:], 72))
+    plt.title('Longitudinal Pressure Gradient Acceleration at Equator, t=%s months, h=%s km' %(time_slice+1, heights[high]))
+    plt.xlabel('Longitude [degrees]')
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    plt.axvline(x=-36, color='r', linestyle='--')
+    plt.axvline(x=36, color='r', linestyle='--')
+    plt.ylabel('Pressure gradient acceleration [m s-2]')
+    plt.show()
+    

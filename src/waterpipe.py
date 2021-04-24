@@ -145,7 +145,13 @@ def load_and_save(directory, filename):
     iris.save(cubes, directory+filename)
     print('Completed save of ' + filename)
     
-            
+def convert_and_save(cubes,directory,filename):
+    
+    cubes = convert_lazy_data(cubes)
+    
+    iris.save(cubes, directory+filename)
+    print('Completed save of ' + filename)
+           
 
 def check_difference(cubes1, cubes2):
     
@@ -259,6 +265,14 @@ def plot_temp_profile(cubes, time_slice=-1):
     plt.title('Temperature Profile at Antistellar Point')
     plt.xlabel('Temperature [K]')
     plt.ylabel('Height [km]')
+    plt.show()
+    
+    plt.plot(absolute_temp[time_slice,:,45,0].data, np.arange(0,absolute_temp.shape[1]), color='r', label='Substellar')
+    plt.plot(absolute_temp[time_slice,:,45,72].data, np.arange(0,absolute_temp.shape[1]), color='b', label='Antistellar')
+    plt.title('Temperature Profiles at Substellar and Antistellar Point')
+    plt.xlabel('Temperature [K]')
+    plt.ylabel('Height [km]')
+    plt.legend()
     plt.show()
     
     iplt.contourf(air_temp_bl[time_slice,:,:], brewer_red.N, cmap=brewer_red)
@@ -495,7 +509,7 @@ def plot_outgoing(cubes):
     plt.ylabel('Longitude [degrees]')
     plt.xlabel('Latitude [degrees]')
     plt.yticks((0,45,89),('90S', '0', '90N'))
-    plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.colorbar(pad=0.1)
     plt.show()
     
@@ -1055,7 +1069,7 @@ def plot_vapour(cubes, time_slice=-1):
     plt.title('Vapour flux magnitude and direction [kg m-2 s-1]')
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
-    plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
     plt.show() 
     
@@ -1314,6 +1328,16 @@ def zonal_heat_transport(cubes, time_slice=-1):
     plt.xticks((0,36, 72, 104, 143),('180W', '90W', '0', '90E', '180E'))
     plt.colorbar(pad=0.1)
     plt.show()
+    
+
+def plot_geopotential(cubes, g=10.9, R=7160000):
+    
+    for cube in cubes:
+        if cube.standard_name =='air_pressure':
+            pressure = cube.copy()
+            
+    heights = pressure.coord('level_height').points
+    geopotential = g*R*heights/(R+heights)
     
 
 # if __name__ == '__main__':
