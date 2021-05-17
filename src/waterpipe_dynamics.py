@@ -19,6 +19,8 @@ from iris.coords import DimCoord
 import numpy as np
 import scipy as sp
 import windspharm
+from matplotlib.colors import TwoSlopeNorm
+
 # Import packages
 
 
@@ -588,4 +590,64 @@ def plot_pressure_force(cubes, time_slice=10, low=47, high=53):
     plt.axvline(x=36, color='r', linestyle='--')
     plt.ylabel('Pressure gradient acceleration [m s-2]')
     plt.show()
+    
+
+def plot_vorticity(cubes, level=47, time_slice=-1, omega=0.64617667):
+    
+    """ Uses windspharm package to plot the vorticity       """
+    
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube.copy()
+        if cube.standard_name == 'y_wind':
+            y_wind = cube.copy()
+   
+    
+    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+    heights = np.round(x_wind.coord('level_height').points*1e-03,0)
+
+    wind = windspharm.iris.VectorWind(x_wind, y_wind)
+
+    planet_vort = wind.planetaryvorticity(omega=omega)
+    relative_vort = wind.vorticity()
+    absolute_vort = wind.absolutevorticity()
+    
+    iplt.contourf(relative_vort[time_slice,level,:,:], brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.title('Relative Vorticity, h = %s km' %(heights[level]), y=1.20)
+    plt.ylabel('Latitude [degrees]')
+    plt.xlabel('Longitude [degrees]')
+    ax = plt.gca()
+    ax.gridlines(draw_labels=True)
+    plt.colorbar(orientation='horizontal')
+    plt.show()
+    
+    
+def vorticity_section(cubes, time_slice=-1, omega=0.64617667):
+    
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube[time_slice,:,:,72:110].copy()
+        if cube.standard_name == 'y_wind':
+            y_wind = cube[time_slice,:,:,72:110].copy()
+       
+    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+    heights, lats, longs = np.round(x_wind.coord('level_height').points*1e-03,0), x_wind.coord('latitude').points, x_wind.coord('longitude').points
+
+    wind = windspharm.iris.VectorWind(x_wind, y_wind)
+
+    planet_vort = wind.planetaryvorticity(omega=omega)
+    relative_vort = wind.vorticity()
+    absolute_vort = wind.absolutevorticity()
+    
+    zonal_relative_vort = np.mean(relative_vort.data, axis=2)
+    
+    plt.contourf(np.array(lats[5:85]), np.array(heights), zonal_relative_vort[:,5:85], brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.title('Mean Zonal Relative Vorticity, longitudes %s to %s' %(longs[0], longs[-1]))
+    plt.ylabel('Height [km]')
+    plt.xlabel('Latitude [degrees]')
+    plt.colorbar(orientation='horizontal')
+    plt.show()
+    
+    
+    
     

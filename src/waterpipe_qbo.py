@@ -145,7 +145,7 @@ def plot_temp_anomaly(cubes, lat=45, levels=(35,44,47,53)):
     
  
 
-def plot_eddy_temp(cubes, start=1780, end=2060, levels=(35,44,47,53)):
+def plot_eddy_temp(cubes, lat=45, start=0, end=160, levels=(38,44,47,53)):
     
     """ Plot the eddy (varying, non-mean) component of air temperature. 
         The eddy temperature is the temperature minus the zonal mean temperature.
@@ -154,26 +154,37 @@ def plot_eddy_temp(cubes, start=1780, end=2060, levels=(35,44,47,53)):
     
     for cube in cubes:
         if cube.standard_name == 'air_potential_temperature':
-            theta = cube[start:end,:,:,:].copy()
+            theta = cube[start:end,:,lat,:].copy()
         if cube.standard_name == 'air_pressure':
-            pressure = cube[start:end,:,:,:].copy()
-        
-    run_length, heights, longitudes = pressure.shape[0], np.round(pressure.coords()[1].points, 0), pressure.shape[3]
+            pressure = cube[start:end,:,lat,:].copy()
+
+    run_length, heights, longitudes = pressure.shape[0], np.round(pressure.coords()[1].points*1e-03, 0), pressure.shape[2]
     
     p0 = iris.coords.AuxCoord(100000.0, long_name='reference_pressure', units='Pa')
     p0.convert_units(pressure.units)
     temperature = theta*((pressure/p0)**(287.05/1005)) # R and cp in J/kgK for 300K
 
     zonal_mean = temperature.collapsed('longitude', iris.analysis.MEAN)
-    temp_prime = temperature - zonal_mean
+    temp_prime = temperature - zonal_mean 
+    
+    daily = np.mean(temp_prime.data.reshape(-1,4,61,144),axis=1)
+                    
+    plt.figure(figsize=(10,5))
+    plt.contourf(np.arange(-longitudes/2,longitudes/2), np.array(heights[47:53]), np.roll(temp_prime[-1,47:53,:].data, 72, axis=1), brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.title('$T^{\prime}$ at Equator [K], day %s' %(end/4))
+    plt.xlabel('Longitude [degrees]')
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    plt.ylabel('Height [km]')
+    plt.colorbar(pad=0.1)
+    plt.show() 
     
     for level in levels:       
                 
         plt.figure(figsize=(10,5))
-        plt.contourf(np.arange(-longitudes/2,longitudes/2), np.arange(0, run_length), np.roll(temp_prime[:,level,45,:].data, 72, axis=1), brewer_redblu.N, cmap=brewer_redblu)
-        plt.title('Eddy Temperature at Equator [K], h=%s km' %(heights[level]))
+        plt.contourf(np.arange(-longitudes/2,longitudes/2), np.arange(0, run_length), np.roll(temp_prime[:,level,:].data, 72, axis=1), np.linspace(-10,10,100), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+        plt.title('$T^{\prime}$ at Equator [K], h=%s km, %s to %s days' %(heights[level], start/4, end/4))
         plt.xlabel('Longitude [degrees]')
-        plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
+        plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
         plt.ylabel('Time [6-hours]')
         plt.colorbar(pad=0.1)
         plt.show() 
@@ -205,38 +216,37 @@ def plot_water_anomaly(cubes):
     plt.show() 
 
         
-def plot_wind_anomaly(cubes):
+def plot_wind_anomaly(cubes, lat=45, times=(0,1500,1780,2060)):
     
     for cube in cubes:
-        if cube.standard_name == 'x_wind':
-            x_wind = cube.copy()
-    # Extract zonal wind cube
+        if cube.standard_name == 'eastward_wind' or cube.standard_name == 'x_wind':
+            x_wind = cube[:,:,lat,:].copy()
     
-    heights = x_wind.coord('level_height').points
-    run_length = x_wind.shape[0]
-    longitudes = x_wind.shape[3]/2
-
-    x_wind_time_mean = x_wind.collapsed('time', iris.analysis.MEAN)
+    longitudes = x_wind.shape[2]/2
+    
+    for coord in x_wind.coords():
+        if coord.long_name == 'Hybrid height':
+            heights = np.round(x_wind.coord('Hybrid height').points*1e-03,0)
+            x_wind_time_mean = x_wind.collapsed('t', iris.analysis.MEAN)
+            time_unit = 'days'
+        elif coord.long_name == 'level_height':
+            heights = np.round(x_wind.coord('level_height').points*1e-03,0)
+            x_wind_time_mean = x_wind.collapsed('time', iris.analysis.MEAN)
+            time_unit = 'months'
     
     anomaly = x_wind - x_wind_time_mean
-      
-    plt.figure(figsize=(10,5))    
-    plt.contourf(np.arange(-longitudes,longitudes), np.array(heights[:58]), np.roll(anomaly[39,:58,45,:].data, 72, axis=1), brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
-    plt.title('Zonal Wind Anomaly at Equator [m s-1], t = 40 months')
-    plt.xlabel('Longitude [degrees]')
-    plt.ylabel('Height [m]')
-    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-    plt.colorbar(pad=0.1)
-    plt.show()
     
-    plt.figure(figsize=(10,5))    
-    plt.contourf(np.arange(-longitudes,longitudes), np.array(heights[:58]), np.roll(anomaly[46,:58,45,:].data, 72, axis=1), brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
-    plt.title('Zonal Wind Anomaly at Equator [m s-1], t = 47 months')
-    plt.xlabel('Longitude [degrees]')
-    plt.ylabel('Height [m]')
-    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-    plt.colorbar(pad=0.1)
-    plt.show() 
+    for time in times:
+      
+        plt.figure(figsize=(10,5))    
+        plt.contourf(np.arange(-longitudes,longitudes), np.array(heights[:58]), np.roll(anomaly[time,:58,:].data, 72, axis=1), brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+        plt.title('Zonal Wind Anomaly at Equator [m s-1], t = %s %s' %(time/4, time_unit))
+        plt.xlabel('Longitude [degrees]')
+        plt.ylabel('Height [m]')
+        plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+        plt.colorbar(pad=0.1)
+        plt.show()
+
     
 
 def plot_u(cubes, start=640, end=800,lat=45, level=47):
@@ -275,15 +285,14 @@ def plot_u(cubes, start=640, end=800,lat=45, level=47):
     plt.show() 
     
     
-def u_prime(cubes, time_slice=1780, level=47, bandpass=False):
+def u_prime(cubes, time_slice=1780, lat=45, level=47, bandpass=False):
     
     for cube in cubes:
         if cube.standard_name == 'eastward_wind':
-            x_wind = cube[time_slice,:,:,:].copy()
-    # Extract zonal wind cube    
+            x_wind = cube[time_slice,:,lat,:].copy()
     
     heights = np.round(x_wind.coord('Hybrid height').points*1e-03, 0)
-    longitudes = x_wind.shape[2]/2
+    longitudes = x_wind.shape[1]/2
     
     dayside = x_wind.intersection(longitude=(-90,89))
     nightside = x_wind.intersection(longitude=(90,269))
@@ -295,46 +304,42 @@ def u_prime(cubes, time_slice=1780, level=47, bandpass=False):
     dayside_spatial_anomaly = dayside - dayside_zonal_mean 
     nightside_spatial_anomaly = nightside - nightside_zonal_mean
     global_spatial_anomaly = x_wind - global_zonal_mean
-    substellar = dayside_spatial_anomaly.intersection(longitude=(-17,18))
     
     plt.figure(figsize=(10,5))
-    plt.plot(np.arange(-longitudes, longitudes), np.roll(x_wind[level,45,:].data, 72, axis=0), color='k', label='U')
-    plt.plot(np.arange(-longitudes, longitudes), np.roll(global_spatial_anomaly[level,45,:].data, 72, axis=0), color='r', label='U$^{\prime}$')
+    plt.plot(np.arange(-longitudes, longitudes), np.roll(x_wind[level,:].data, 72, axis=0), color='k', label='U')
+    plt.plot(np.arange(-longitudes, longitudes), np.roll(global_spatial_anomaly[level,:].data, 72, axis=0), color='r', label='U$^{\prime}$')
     plt.title('U at Equator, t=%s days, h=%s km' %(time_slice/4, heights[level]))
     plt.xlabel('Longitude [degrees]')
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.ylabel('Wind speed [m s-1]')
-    plt.axhline(y=global_zonal_mean[level,45].data, color='b', linestyle='--', label='$\overline{U}$')
+    plt.axhline(y=global_zonal_mean[level].data, color='b', linestyle='--', label='$\overline{U}$')
     plt.legend()
+    plt.show()
+    
+    plt.figure(figsize=(10,5))    
+    plt.contourf(np.arange(-longitudes,longitudes), np.array(heights[35:58]), np.roll(global_spatial_anomaly[35:58].data, 72,axis=0), brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.title('$U^{\prime}$ at Equator [m s-1], t = %s days' %(time_slice/4))
+    plt.xlabel('Longitude [degrees]')
+    plt.ylabel('Height [km]')
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    plt.colorbar(pad=0.1)
     plt.show()
    
     plt.figure(figsize=(10,5))    
-    plt.contourf(np.arange(-longitudes/2,longitudes/2), np.array(heights[35:58]), nightside_spatial_anomaly[35:58,45,:].data, brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
-    plt.title('Nightside Eddy Zonal Wind at Equator [m s-1], t = %s days' %(time_slice/4))
+    plt.contourf(np.arange(-longitudes/2,longitudes/2), np.array(heights[35:58]), nightside_spatial_anomaly[35:58,:].data, brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.title('Nightside $U^{\prime}$ at Equator [m s-1], t = %s days' %(time_slice/4))
     plt.xlabel('Longitude [degrees]')
-    plt.ylabel('Height [m]')
+    plt.ylabel('Height [km]')
     plt.xticks((-36,-18,0,18,36), ('90E', '135E', '180', '135W','90W'))
-#    plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
     plt.colorbar(pad=0.1)
     plt.show()
     
     plt.figure(figsize=(10,5))    
-    plt.contourf(np.arange(-longitudes/2,longitudes/2), np.array(heights[35:58]), dayside_spatial_anomaly[35:58,45,:].data, brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
-    plt.title('Dayside Eddy Zonal Wind at Equator [m s-1], t = %s days' %(time_slice/4))
+    plt.contourf(np.arange(-longitudes/2,longitudes/2), np.array(heights[35:58]), dayside_spatial_anomaly[35:58,:].data, brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.title('Dayside $U^{\prime}$ at Equator [m s-1], t = %s days' %(time_slice/4))
     plt.xlabel('Longitude [degrees]')
-    plt.ylabel('Height [m]')
+    plt.ylabel('Height [km]')
     plt.xticks((-36,-18,0,18,36), ('90W', '45W', '0', '45E','90E'))
-#    plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
-    plt.colorbar(pad=0.1)
-    plt.show()
-    
-    plt.figure(figsize=(5,5))    
-    plt.contourf(np.arange(-7,7), np.array(heights[35:58]), substellar[35:58,45,:].data, brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
-    plt.title('Substellar Eddy Zonal Wind at Equator [m s-1], t = %s days' %(time_slice/4))
-    plt.xlabel('Longitude [degrees]')
-    plt.ylabel('Height [m]')
-    plt.xticks((-6, -4, 0, 4, 6), ('15W', '10W', '0', '10E','15E'))
-#    plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
     plt.colorbar(pad=0.1)
     plt.show()
     
@@ -586,35 +591,6 @@ def equatorial_wind(cubes, time_slice=1780, low=47, high=53, bandpass=False):
         plt.plot(np.arange(-longitudes, longitudes), back)
         plt.show()
         
-#     plt.figure(figsize=(10,5))
-#     plt.plot(np.arange(-longitudes, longitudes), np.roll(acceleration[time_slice,37,45,:].data, 72))
-#     plt.title('Zonal Wind Acceleration at Equator, t=%s months, h=%s km' %(time_slice+1, heights[37]))
-#     plt.xlabel('Longitude [degrees]')
-#     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-#     plt.axvline(x=-36, color='r', linestyle='--')
-#     plt.axvline(x=36, color='r', linestyle='--')
-#     plt.ylabel('Wind speed [m s-2]')
-#     plt.show()
-    
-#     plt.figure(figsize=(10,5))
-#     plt.plot(np.arange(-longitudes, longitudes), westerly_acc)
-#     plt.title('Zonal Wind Acceleration at Equator, t=%s months, h=%s km' %(time_slice+1, heights[low]))
-#     plt.xlabel('Longitude [degrees]')
-#     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-#     plt.axvline(x=-36, color='r', linestyle='--')
-#     plt.axvline(x=36, color='r', linestyle='--')
-#     plt.ylabel('Wind speed [m s-2]')
-#     plt.show()
-    
-#     plt.figure(figsize=(10,5))
-#     plt.plot(np.arange(-longitudes, longitudes), easterly_acc)
-# #    plt.plot(np.arange(-longitudes, longitudes), np.zeros_like(easterly), color='g', linestyle='--')
-#     plt.title('Zonal Wind Acceleration at Equator, t=%s months, h=%s km' %(time_slice+1, heights[high]))
-#     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-#     plt.axvline(x=-36, color='r', linestyle='--')
-#     plt.axvline(x=36, color='r', linestyle='--')    
-#     plt.ylabel('Wind speed [m s-2]')
-#     plt.show()
     
 
 def equatorial_pressure(cubes, time_slice=10, low=47, high=53):
@@ -728,40 +704,42 @@ def equatorial_temp(cubes, time_slice=10, low=47, high=53):
 
 def ep_zderivative(array,h):
     work = array.copy()
-    work[:,0,:] = (array[:,1,:]-array[:,0,:])/(h[:,1,:]-h[:,0,:])
-    work[:,-1,:] = (array[:,-1,:]-array[:,-2,:])/(h[:,-1,:]-h[:,-2,:])
-    work[:,1:-1,:] = (array[:,2:,:]-array[:,0:-2,:])/(h[:,2:,:]-h[:,0:-2,:])
+    work[:,0,...] = (array[:,1,...]-array[:,0,...])/(h[:,1,...]-h[:,0,...])
+    work[:,-1,...] = (array[:,-1,...]-array[:,-2,...])/(h[:,-1,...]-h[:,-2,...])
+    work[:,1:-1,...] = (array[:,2:,...]-array[:,0:-2,...])/(h[:,2:,...]-h[:,0:-2,...])
     
     return work
 
 def ep_latderivative(array,l):
     
     work = array.copy()
-    work[:,:,0] = (array[:,:,1]-array[:,:,0])/(l[1]-l[0])
-    work[:,:,-1] = (array[:,:,-1]-array[:,:,-2])/(l[-1]-l[-2])
-    work[:,:,1:-1] = (array[:,:,2:]-array[:,:,0:-2])/(l[2:]-l[0:-2])
+    work[:,:,0,...] = (array[:,:,1,...]-array[:,:,0,...])/(l[1,...]-l[0,...])
+    work[:,:,-1,...] = (array[:,:,-1,...]-array[:,:,-2,...])/(l[-1,...]-l[-2,...])
+    work[:,:,1:-1,...] = (array[:,:,2:,...]-array[:,:,0:-2,...])/(l[2:,...]-l[0:-2,...])
     
     return work
 
-def ep_flux(cubes, omega=0.64617667e-05, plot=False, start=1500, end=1780):
+def ep_flux(cubes, omega=0.64617667e-05, level=47, long_slice=(120,132), start=1780, end=1784):
     
     for cube in cubes:
         if cube.standard_name == 'air_potential_temperature':
-            theta = cube[start:end,:,:,:].copy()
+            theta = cube[start:end,:,:,long_slice[0]:long_slice[-1]].copy()
         if cube.standard_name == 'eastward_wind':
-            x_wind = cube[start:end,:,:,:].copy()
+            x_wind = cube[start:end,:,:,long_slice[0]:long_slice[-1]].copy()
         if cube.standard_name == 'northward_wind':
-            y_wind = cube[start:end,:,:,:].copy()
+            y_wind = cube[start:end,:,:,long_slice[0]:long_slice[-1]].copy()
         if cube.standard_name == 'air_pressure':
-            pressure = cube[start:end,:,:,:].copy()
+            pressure = cube[start:end,:,:,long_slice[0]:long_slice[-1]].copy()
+    
+    heights, longitudes, longs = np.round(pressure.coord('Hybrid height').points*1e-03,0), pressure.coord('longitude').points, pressure.shape[3]/2
     
     y_wind, x_wind = y_wind.regrid(pressure, iris.analysis.Linear()), x_wind.regrid(pressure, iris.analysis.Linear())
     
-    heights = [('Hybrid height', pressure.coord('Hybrid height').points)]
-    x_wind, y_wind = x_wind.interpolate(heights, iris.analysis.Linear()), y_wind.interpolate(heights, iris.analysis.Linear())
+    vertical = [('Hybrid height', pressure.coord('Hybrid height').points)]
+    x_wind, y_wind = x_wind.interpolate(vertical, iris.analysis.Linear()), y_wind.interpolate(vertical, iris.analysis.Linear())
     
-    for cube in (theta, x_wind, y_wind, pressure):
-        cube = cube.intersection(longitude=(-90,90))
+    # for cube in (theta, x_wind, y_wind, pressure):
+    #     cube = cube.intersection(longitude=long_slice)
     
     theta_data = theta.data
     x_wind_data = x_wind.data
@@ -805,37 +783,37 @@ def ep_flux(cubes, omega=0.64617667e-05, plot=False, start=1500, end=1780):
     EP_phi_div = ep_latderivative(EP_phi, rsinphi)
     EP_up_div = ep_zderivative(EP_up, logpressure_zonal_mean)
     EP_div = EP_phi_div + EP_up_div
-    EP_div_mean = np.mean(EP_div, axis=0)
-    
-    if plot==True:
+    EP_div_mean = np.mean(EP_div, axis=0)  
+    x_mean = x_zonal_mean.collapsed('t', iris.analysis.MEAN)
         
-        x_axis = pressure.coord('latitude').points
-        y_axis = pressure.coord('Hybrid height').points
-        plt.contourf(x_axis, y_axis[35:58], EP_div_mean[35:58,:], brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
-        plt.colorbar(pad=0.1)
-
-#        CS = plt.contour(x_axis, y_axis, x_zonal_mean.data)
-        plt.title('EP flux divergence for day=%s to %s' %(start/4, end/4))
-        plt.xlabel('Latitude [degrees]')
-#        plt.ylim(max(y_axis), min(y_axis))
-        plt.ylabel('Height [m]')
-#        plt.clabel(CS, inline=False, colors='k', fmt='%1.1f')
-        plt.show()
+    x_axis = pressure.coord('latitude').points
+    y_axis = pressure.coord('Hybrid height').points
+    plt.contourf(x_axis, y_axis[35:59], EP_div_mean[35:59,:], brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.colorbar(pad=0.1)
+    CS = plt.contour(x_axis, y_axis[35:59], x_mean[35:59].data, colors='black', linewidths=0.5)
+    plt.title('EP flux divergence for day=%s, long=%s to %s' %(start/4, longitudes[0], longitudes[-1]))
+    plt.xlabel('Latitude [degrees]')
+    plt.ylabel('Height [m]')
+    plt.clabel(CS, inline=False, colors='k', fmt='%1.1f')
+    plt.show()
     
-    return EP_div
+    # THETAp_non = ep_zderivative(theta_data, logpressure)
+    # THETAp_non /= logpressure
 
-
-# def plot_EP(array, day):    
+    # EP_phi_non = -XY_anomaly*np.repeat(latfac[:,np.newaxis], 144,1)
+    # EP_up_non = (np.repeat(coriolis[:,np.newaxis], 144,1)*np.repeat(rcosphi[:,np.newaxis], 144,1)*YTH_anomaly)/THETAp_non
+    # EP_phi_non_div = ep_latderivative(EP_phi_non, np.repeat(rsinphi[:,np.newaxis], 144,1))
+    # EP_up_non_div = ep_zderivative(EP_up_non, logpressure)
+    # EP_div_non = EP_phi_non_div + EP_up_non_div
+    # EP_div_non_mean = np.mean(EP_div_non, axis=0)
     
-#     x_axis = range(-array.shape[2]/2,array.shape[2]/2)
-#     y_axis = np.round(pressure_data[day,:,45,0],0)
-#     plt.contourf(x_axis, y_axis, EP_div[day,:,:], brewer_redblu.N, cmap=brewer_redblu)
-#     plt.title('EP flux divergence on day=%s' %day)
-#     plt.xlabel('Latitude [degrees]')
-#     plt.ylabel('Pressure [Pa]')
-#     plt.xticks((-45,0,45),('90S', '0', '90N'))
-#     plt.colorbar(pad=0.1)
-#     plt.show()
+    # plt.contourf(np.roll(pressure.coord('longitude').points, 72), pressure.coord('latitude').points, EP_div_non_mean[level,:,:], brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    # plt.title('EP flux divergence for day=%s to %s, h=%s km' %(start/4, end/4, heights[level]))
+    # plt.xlabel('Longitude [degrees]')
+    # plt.ylabel('Latitude [degrees]')
+    # plt.colorbar(pad=0.1)
+    # plt.show()
+
 
 def momentum_transport(cubes, start=1500, end=1780):
     for cube in cubes:
@@ -887,8 +865,94 @@ def momentum_transport(cubes, start=1500, end=1780):
     plt.colorbar(pad=0.1)
     plt.show()
     
-#def plot_uw(cubes, start=0, end=120, lat=45, level=47):
     
+def plot_uw(cubes, start=0, end=120, lat=45, levels=(37,44,47,53)):
+    
+    for cube in cubes:
+        if cube.standard_name == 'eastward_wind' or cube.standard_name == 'x_wind':
+            x_wind = cube[start:end,:,:,:].copy() 
+        if cube.standard_name == 'northward_wind' or cube.standard_name == 'y_wind':
+            y_wind = cube[start:end,:,:,:].copy()
+        if cube.standard_name == 'upward_air_velocity':
+            z_wind = cube[start:end,:,:,:].copy()
+    
+    run_length, longitudes, latitudes = x_wind.shape[0], x_wind.shape[3]/2, x_wind.shape[2]/2
+            
+    y_wind, z_wind = y_wind.regrid(x_wind, iris.analysis.Linear()), z_wind.regrid(x_wind, iris.analysis.Linear())
+    
+    for coord in x_wind.coords():
+        if coord.long_name == 'Hybrid height':
+            heights = np.round(x_wind.coord('Hybrid height').points*1e-03,0)
+            vertical = [('Hybrid height', x_wind.coord('Hybrid height').points)]
+        elif coord.long_name == 'level_height':
+            heights = np.round(x_wind.coord('level_height').points*1e-03,0)
+            vertical = [('level_height', x_wind.coord('level_height').points)]
+            
+    z_wind = z_wind.interpolate(vertical, iris.analysis.Linear())
+    
+    zonal_mean_u = x_wind.collapsed('longitude', iris.analysis.MEAN)
+    u_prime = x_wind - zonal_mean_u
+    zonal_mean_w = z_wind.collapsed('longitude', iris.analysis.MEAN)
+    w_prime = z_wind - zonal_mean_w
+    cross_term = u_prime*w_prime
+    
+    
+    for level in levels:
+        
+        plt.figure(figsize=(10,5))
+        plt.contourf(np.arange(-longitudes,longitudes), np.arange(0, run_length), np.roll(cross_term[:,level,lat,:].data, 72, axis=1),brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+        plt.title('$U^{\prime} \cdot W^{\prime}$ at Equator [m2 s-2], h=%s km, %s to %s days' %(heights[level], start/4, end/4))
+        plt.xlabel('Longitude [degrees]')
+        plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+        plt.ylabel('Time [6-hours]')
+        plt.colorbar(pad=0.1)
+        plt.show()
+        
+        plt.figure(figsize=(10,5))
+        plt.contourf(np.arange(-longitudes,longitudes), np.arange(-latitudes,latitudes), np.roll(cross_term[-1,level,:,:].data, 72, axis=1),brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+        plt.title('$U^{\prime} \cdot W^{\prime}$ [m2 s-2], h=%s km, day=%s' %(heights[level], end/4))
+        plt.xlabel('Longitude [degrees]')
+        plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+        plt.ylabel('Latitude [degrees]')
+        plt.colorbar(pad=0.1)
+        plt.show()
+        
+    
+def plot_uv(cubes, time_slice=1500, levels=(37,44,47,53)):
+    
+    for cube in cubes:
+        if cube.standard_name == 'eastward_wind' or cube.standard_name == 'x_wind':
+            x_wind = cube[time_slice,:,:,:].copy() 
+        if cube.standard_name == 'northward_wind' or cube.standard_name == 'y_wind':
+            y_wind = cube[time_slice,:,:,:].copy()
+    
+    longitudes, latitudes = x_wind.shape[2]/2, x_wind.shape[1]/2
+            
+    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+    
+    for coord in x_wind.coords():
+        if coord.long_name == 'Hybrid height':
+            heights = np.round(x_wind.coord('Hybrid height').points*1e-03,0)
+        elif coord.long_name == 'level_height':
+            heights = np.round(x_wind.coord('level_height').points*1e-03,0)            
+    
+    zonal_mean_u = x_wind.collapsed('longitude', iris.analysis.MEAN)
+    u_prime = x_wind - zonal_mean_u
+    zonal_mean_v = y_wind.collapsed('longitude', iris.analysis.MEAN)
+    v_prime = y_wind - zonal_mean_v
+    cross_term = u_prime*v_prime
+        
+    for level in levels:
+        
+        plt.figure(figsize=(10,5))
+        plt.contourf(np.arange(-longitudes,longitudes), np.arange(-latitudes,latitudes), np.roll(cross_term[level,:,:].data, 72, axis=1),brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+        plt.title('$U^{\prime} \cdot V^{\prime}$ [m2 s-2], h=%s km, day=%s' %(heights[level], time_slice/4))
+        plt.xlabel('Longitude [degrees]')
+        plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+        plt.ylabel('Latitude [degrees]')
+        plt.colorbar(pad=0.1)
+        plt.show() 
+        
         
 
 def wavelets(cubes, plot=False):
@@ -948,6 +1012,7 @@ def wavelets(cubes, plot=False):
     plt.ylabel('Scale')
     plt.show()
     
+    
 def wk_filter(arg):
     
     """ 1-2-1 filter for smoothing Fourier coefficients in the Wheeler-Kiladis diagram
@@ -959,7 +1024,7 @@ def wk_filter(arg):
     out[1:-1] = (2*arg[1:-1]+ arg[0:-2] + arg[2:])/4
     return out
 
-def wheeler_kiladis(cubes, omega=0.64617667e-05, radius=7160000, period=(1780,2060), level=38, lat=45, smooth=400):
+def wheeler_kiladis(cubes, omega=0.64617667e-05, radius=7160000, period=(0,160), level=38, lat=45, smooth=400):
     
     for cube in cubes:
         if cube.standard_name == 'air_potential_temperature':
@@ -978,8 +1043,11 @@ def wheeler_kiladis(cubes, omega=0.64617667e-05, radius=7160000, period=(1780,20
     
     zonal_mean_temperature = temperature.collapsed('longitude', iris.analysis.MEAN)
     eddy_temperature = temperature - zonal_mean_temperature
+    print(eddy_temperature.shape)
     # Calculate eddy temperatures
     
+    # daily = np.mean(eddy_temperature.data.reshape(-1,4,61,90,144),axis=1)
+    # print(daily.shape)    
     data = eddy_temperature[:,level,lat,:].data
     # Extract eddy temperature data for requested atmospheric level and latitude
     # Default latitude is the equator
@@ -987,11 +1055,11 @@ def wheeler_kiladis(cubes, omega=0.64617667e-05, radius=7160000, period=(1780,20
     """ Here you do the Fourier stuff"""
     
     coeffs = np.abs(np.fft.fftshift(np.fft.fft2(data)))**2
+    print(coeffs.shape)
     # Compute power spectral density 
     
-    wavenumbers = np.fft.fftshift(np.fft.fftfreq(longs)*longs)
-    print(wavenumbers)
-    freqs = np.fft.fftshift(np.fft.fftfreq(run_length, d=1./float(4)))
+    wavenumbers = -np.fft.fftshift(np.fft.fftfreq(coeffs.shape[1])*coeffs.shape[1])
+    freqs = np.fft.fftshift(np.fft.fftfreq(coeffs.shape[0], d=1./float(4)))
     # Find temporal and spatial frequencies for dataset. Sampling frequency is 4x/day. 
     # Sample size for time is the run length, sample size for space is 144 (number of columns for longitude in the UM)
     pos = freqs > 0  
@@ -1006,40 +1074,34 @@ def wheeler_kiladis(cubes, omega=0.64617667e-05, radius=7160000, period=(1780,20
     signal = signal/background # Ratio of signal to background
     
     """ Calculate dispersion relation """
-    
+    g = 10.9
     lats = pressure.coord('latitude').points*(np.pi/180)
-    f0 = 2*omega*np.cos(lats[lat])
+    omega = omega*86400/(2*np.pi) # Convert rotation rate from rad/s to cycles/day
+    f0 = 2*omega*np.cos(abs(lats[lat]))
+    beta = f0/radius
     
-    # R = 8.314 # ideal gas constant in J/K*mol
-    # M = 28.0134e-03 # molar mass of N2 in kg/mol
-    
-    # density = (pressure*R*temperature)/M
-    # grid = iris.analysis.cartography.area_weights(density)
-    # d0 = density[:,0,:,:].collapsed(['latitude, longitude, time'], iris.analysis.MEAN, weights=grid)
-    theta_c = theta[:,level,lat,:].collapsed(['t','longitude'], iris.analysis.MEAN)
-    c = np.sqrt(287.05*theta_c.data)
+    c = np.sqrt(g*1)
 
-    # freq_scale = freqs[pos]/np.sqrt(f0*c)
-    # wavenumber_scale = wavenumbers*np.sqrt(c/f0)
-    # print(freq_scale, wavenumber_scale)
+    # freq_scale = (2*np.pi/86400)*freqs[pos]/np.sqrt(beta*c)
+    # wavenumber_scale = (wavenumbers/radius)*np.sqrt(c/beta)
     
-    # grav_1 = np.sqrt(wavenumber_scale**2) + 3
-    # print(grav_1)
-    grav_1 = (np.sqrt((c**2)*(wavenumbers**2) + f0*c*3))/86400
-    print(grav_1)
-    # grav_2 = (np.sqrt((c**2)*(wavenumbers**2) + beta*c*5))
+    # grav_0 = (np.sqrt(wavenumber_scale**2) + 1)*(86400/(2*np.pi))*np.sqrt(beta*c)
+    # grav_1 = (np.sqrt(wavenumber_scale**2) + 3)
     # plan_1 = -wavenumber_scale/(3 + wavenumber_scale**2)
-    # print(plan_1)
-    # plan_1 = (-(beta*wavenumbers)/(beta/c) + wavenumbers**2)
+    # plan_2 = -wavenumber_scale/(5 + wavenumber_scale**2)
+    # kelvin = c*wavenumber_scale
         
-    plt.contourf(wavenumbers, freqs[pos], np.flip(signal[pos,:], axis=1), brewer_reds.N, cmap=brewer_reds)
-    plt.plot(wavenumbers, grav_1, color='k', linewidth=0.5)
-#    plt.plot(wavenumbers, plan_1, color='k', linewidth=0.5)
+    plt.contourf(wavenumbers, freqs[pos], signal[pos,:], brewer_reds.N, cmap=brewer_reds)
+    # plt.plot(wavenumbers, grav_0, color='k', linewidth=0.5)
+    # plt.plot(wavenumbers, grav_1, color='k', linewidth=0.5)
+    # plt.plot(wavenumbers, plan_1, color='k', linewidth=0.5)
+    # plt.plot(wavenumbers, plan_2, color='k', linewidth=0.5)
+    # plt.plot(wavenumbers, kelvin, color='k', linewidth=0.5)
 
     plt.title('Wavenumber-frequency spectrum, h=%s km' %(heights[level]))
     plt.xlabel('Zonal wavenumber')
     plt.ylabel('Frequency [CPD]')
-    plt.ylim([0,2])
+    # plt.ylim([0,2])
     plt.colorbar(pad=0.1)
     plt.show()
     
