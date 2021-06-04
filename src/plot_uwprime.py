@@ -111,8 +111,17 @@ def create_xsection(cubes, time_slice=1780, lat=45):
     for cube in cubes:
         if cube.standard_name == 'eastward_wind' or cube.standard_name=='x_wind':
             x_wind = cube[time_slice,:,:,:].copy()
+        if cube.standard_name == 'air_pressure':
+            pressure = cube[time_slice,:,:,:].copy()
             
-    longitudes, heights = x_wind.shape[2]/2, np.round(x_wind.coord('Hybrid height').points*1e-03,0)    
+    longitudes, heights = x_wind.shape[2]/2, np.round(x_wind.coord('Hybrid height').points*1e-03,0) 
+    pressure = pressure.regrid(x_wind, iris.analysis.Linear())
+    
+    height = [('Hybrid height', x_wind.coord('Hybrid height').points)]
+    pressure = pressure.interpolate(height, iris.analysis.Linear())
+ 
+    pressure = pressure.extract(iris.Constraint(latitude=45))
+    h = np.log(pressure.data)
     
     u_prime_array = []
     xterm_array = []
@@ -126,6 +135,12 @@ def create_xsection(cubes, time_slice=1780, lat=45):
     
     u_prime_array = np.array(u_prime_array)
     xterm_array = np.array(xterm_array)
+    
+    array = xterm_array.copy()
+    acceleration = array.copy()
+    acceleration[0,:] = (array[1,:]-array[0,:])/(h[1,:]-h[0,:])
+    acceleration[-1,:] = (array[-1,:]-array[-2,:])/(h[-1,:]-h[-2,:])
+    acceleration[1:-1,:] = (array[2:,:]-array[0:-2,:])/(h[2:,:]-h[0:-2,:])
     
     plt.figure(figsize=(10,5))    
     plt.contourf(np.arange(-longitudes, longitudes), np.array(heights), np.roll(u_prime_array, 72, axis=1), brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
@@ -155,8 +170,8 @@ def create_xsection(cubes, time_slice=1780, lat=45):
     plt.show()
     
     plt.figure(figsize=(10,5))    
-    plt.contourf(np.arange(-longitudes, longitudes), np.array(heights[35:58]), np.roll(xterm_array[35:58], 72, axis=1), brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
-    plt.title('$U^{\prime} \cdot W^{\prime}$ at Equator, t=%s days' %(time_slice/4))
+    plt.contourf(np.arange(-longitudes, longitudes), np.array(heights), np.roll(acceleration, 72, axis=1), np.linspace(-0.5,0.5,10), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.title('Wave-Induced Acceleration at Equator (filtered), t=%s days' %(time_slice/4))
     plt.xlabel('Longitude [degrees]')
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.ylabel('Height [km]')

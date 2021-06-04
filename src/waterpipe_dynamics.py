@@ -52,7 +52,7 @@ def plot_zonal_wind(cubes, time_slice=-1):
     dayside_zonal_time = dayside_zonal_end.collapsed('time', iris.analysis.MEAN)
     nightside_zonal_time = nightside_zonal_end.collapsed('time', iris.analysis.MEAN)
     
-    CS_day = iplt.contourf(dayside_zonal_mean[time_slice,:,:], levels=np.linspace(-170,130,20), cmap=brewer_redblu)
+    CS_day = iplt.contourf(dayside_zonal_mean[time_slice,:,:], levels=np.linspace(-170,130,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Dayside Zonal Mean Zonal Wind [m s-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
@@ -60,7 +60,7 @@ def plot_zonal_wind(cubes, time_slice=-1):
     plt.colorbar(pad=0.1)
     plt.show()
     
-    CS_night = iplt.contourf(nightside_zonal_mean[time_slice,:,:], levels=np.linspace(-170,130,20), cmap=brewer_redblu)
+    CS_night = iplt.contourf(nightside_zonal_mean[time_slice,:,:], levels=np.linspace(-170,130,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Nightside Zonal Mean Zonal Wind [m s-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
@@ -68,7 +68,7 @@ def plot_zonal_wind(cubes, time_slice=-1):
     plt.colorbar(pad=0.1)
     plt.show()
     
-    CS_day = iplt.contourf(x_mean[:,:,0], levels=np.linspace(-170,130,20), cmap=brewer_redblu)
+    CS_day = iplt.contourf(x_mean[:,:,0], levels=np.linspace(-170,130,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Mean Zonal Wind, Long 0 [m s-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
@@ -76,7 +76,7 @@ def plot_zonal_wind(cubes, time_slice=-1):
     plt.colorbar(pad=0.1)
     plt.show()
     
-    CS_night = iplt.contourf(x_mean[:,:,72], levels=np.linspace(-170,130,20), cmap=brewer_redblu)
+    CS_night = iplt.contourf(x_mean[:,:,72], levels=np.linspace(-170,130,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Mean Zonal Wind, Long 180 [m s-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
@@ -432,85 +432,107 @@ def rossby_source(cubes, time_slice=-1, level=0):
     plt.show()
   
 
-def decomposition(cubes, time_slice=-1, level=0, vapour=False):  
+def decomposition(cubes, n=3, time_slice=-1, level=17):  
             
     for cube in cubes:
         if cube.standard_name == 'x_wind':
             x_wind = cube.copy()
         if cube.standard_name == 'y_wind':
             y_wind = cube.copy()
-        if cube.long_name == 'water_vapour_flux_x':
-            x_vapour = cube.copy()
-        if cube.long_name == 'water_vapour_flux_y':
-            y_vapour = cube.copy()
+        if cube.standard_name =='air_pressure':
+            pressure = cube.copy()
+
  
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
-    y_vapour = y_vapour.regrid(x_vapour, iris.analysis.Linear())
-    heights = np.round(x_wind.coord('level_height').points,0)
+    
+    height = [('level_height', x_wind.coord('level_height').points)]
+    pressure = pressure.interpolate(height, iris.analysis.Linear())
+    heights = np.round(pressure.data*1e-05,2)
     
     winds = windspharm.iris.VectorWind(x_wind,y_wind)  
-    vapour = windspharm.iris.VectorWind(x_vapour,y_vapour)
-    uchi,vchi,upsi,vpsi = winds.helmholtz()
-    u2chi,v2chi,u2psi,v2psi = vapour.helmholtz()
+    uchi,vchi,upsi,vpsi = winds.helmholtz(truncation=21)
+    
+    zonal_upsi = upsi.collapsed('longitude', iris.analysis.MEAN)
+    zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
+    eddy_upsi = upsi - zonal_upsi
+    eddy_vpsi = vpsi - zonal_vpsi
     
     chi_magnitude = iris.analysis.maths.apply_ufunc(np.sqrt, (uchi**2 + vchi**2))
     psi_magnitude =  iris.analysis.maths.apply_ufunc(np.sqrt, (upsi**2 + vpsi**2))
-    chi2_magnitude = iris.analysis.maths.apply_ufunc(np.sqrt, (u2chi**2 + v2chi**2))
-    psi2_magnitude =  iris.analysis.maths.apply_ufunc(np.sqrt, (u2psi**2 + v2psi**2))
 
     X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
-    fig = plt.figure(figsize = (10,4)) 
-    strm = plt.streamplot(X, Y, np.roll(uchi[time_slice,level,:,:].data, 72, axis=1), np.roll(vchi[time_slice,level,:,:].data, 72, axis=1), density = 0.5, color=np.roll(chi_magnitude[time_slice,level,:,:].data, 72, axis=1), cmap=brewer_reds)
-    # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
-    # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
-    fig.colorbar(strm.lines)
-    plt.title('Divergent component of wind [m s-1], h=%s m' %(heights[level]))
+    # fig1 = plt.figure(figsize = (10,5)) 
+    # strm1 = plt.streamplot(X, Y, np.roll(uchi[time_slice,level,:,:].data, 72, axis=1), np.roll(vchi[time_slice,level,:,:].data, 72, axis=1), density = 0.5, color=np.roll(chi_magnitude[time_slice,level,:,:].data, 72, axis=1), cmap=brewer_reds)
+    # # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
+    # # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
+    # fig1.colorbar(strm1.lines)
+    # plt.title('Divergent component of wind [m s-1], h=%s bar' %(heights[level]))
+    # plt.xlabel('Longitude')
+    # plt.ylabel('Latitude')
+    # plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    # plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
+    # plt.show() 
+    
+    fig2, ax2 = plt.subplots(figsize = (10,5)) 
+    q1 = ax2.quiver(X[::n,::n], Y[::n,::n], np.roll(uchi[time_slice,level,::n,::n].data, 72, axis=1), np.roll(-vchi[time_slice,level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=3)
+    ax2.quiverkey(q1, X=0.9, Y=1.05, U=3, label='3 m/s', labelpos='E', coordinates='axes')
+    plt.title('Divergent component of wind [m s-1], h=%s bar' %(heights[time_slice,level,0,0]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
     plt.show() 
     
-    X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
-    fig = plt.figure(figsize = (10,4)) 
-    strm = plt.streamplot(X, Y, np.roll(upsi[time_slice,level,:,:].data, 72, axis=1), np.roll(vpsi[time_slice,level,:,:].data, 72, axis=1), density = 0.5, color=np.roll(psi_magnitude[time_slice,level,:,:].data, 72, axis=1), cmap=brewer_reds)
-    # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
-    # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
-    fig.colorbar(strm.lines)
-    plt.title('Rotational component of wind [m s-1], h=%s m' %(heights[level]))
+    # fig3 = plt.figure(figsize = (10,5)) 
+    # strm2 = plt.streamplot(X, Y, np.roll(upsi[time_slice,level,:,:].data, 72, axis=1), np.roll(vpsi[time_slice,level,:,:].data, 72, axis=1), density = 0.5, color=np.roll(psi_magnitude[time_slice,level,:,:].data, 72, axis=1), cmap=brewer_reds)
+    # fig3.colorbar(strm2.lines)
+    # plt.title('Rotational component of wind [m s-1], h=%s bar' %(heights[level]))
+    # plt.xlabel('Longitude')
+    # plt.ylabel('Latitude')
+    # plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    # plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
+    # plt.show() 
+            
+    fig4, ax4 = plt.subplots(figsize = (10,5)) 
+    q2 = ax4.quiver(X[::n,::n], Y[::n,::n], np.roll(upsi[time_slice,level,::n,::n].data, 72, axis=1), np.roll(-vpsi[time_slice,level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=25)
+    ax4.quiverkey(q2, X=0.9, Y=1.05, U=25, label='25 m/s', labelpos='E', coordinates='axes')
+    plt.title('Rotational component of wind [m s-1], h=%s bar' %(heights[time_slice,level,0,0]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
-    plt.show() 
+    plt.show()
     
-    if vapour==True:
+    # fig5, ax5 = plt.subplots(figsize = (10,5)) 
+    # q3 = ax5.quiver(X[::n,::n], Y[::n,::n], np.roll(zonal_upsi[time_slice,level,::n,::n].data, 72, axis=1), np.roll(zonal_vpsi[time_slice,level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=25)
+    # ax5.quiverkey(q3, X=0.9, Y=1.05, U=25, label='25 m/s', labelpos='E', coordinates='axes')
+    # plt.title('Zonal rotational component of wind [m s-1], h=%s bar' %(heights[level]))
+    # plt.xlabel('Longitude')
+    # plt.ylabel('Latitude')
+    # plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    # plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
+    # plt.show()
     
-        X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
-        fig = plt.figure(figsize = (10,4)) 
-        strm = plt.streamplot(X, Y, np.roll(u2chi[time_slice,:,:].data, 72, axis=1), np.roll(v2chi[time_slice,:,:].data, 72, axis=1), density = 0.5, color=np.roll(chi2_magnitude[time_slice,:,:].data, 72, axis=1), cmap=brewer_reds)
-        # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
-        # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
-        fig.colorbar(strm.lines)
-        plt.title('Divergent component of vapour flux')
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
-        plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-        plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
-        plt.show() 
-        
-        X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
-        fig = plt.figure(figsize = (10,4)) 
-        strm = plt.streamplot(X, Y, np.roll(u2psi[time_slice,:,:].data, 72, axis=1), np.roll(v2psi[time_slice,:,:].data, 72, axis=1), density = 0.5, color=np.roll(psi2_magnitude[time_slice,:,:].data, 72, axis=1), cmap=brewer_reds)
-        # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
-        # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
-        fig.colorbar(strm.lines)
-        plt.title('Rotational component of vapour flux')
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
-        plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-        plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
-        plt.show() 
+    fig6, ax6 = plt.subplots(figsize = (10,5)) 
+    q4 = ax6.quiver(X[::n,::n], Y[::n,::n], np.roll(eddy_upsi[time_slice,level,::n,::n].data, 72, axis=1), np.roll(-eddy_vpsi[time_slice,level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=2)
+    ax6.quiverkey(q4, X=0.9, Y=1.05, U=2, label='2 m/s', labelpos='E', coordinates='axes')
+    plt.title('Eddy rotational component of wind [m s-1], h=%s bar' %(heights[time_slice,level,0,0]))
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
+    plt.show()
+    
+    fig7, ax7 = plt.subplots(figsize = (10,5)) 
+    q5 = ax7.quiver(X[::n,::n], Y[::n,::n], np.roll(x_wind[time_slice,level,::n,::n].data, 72, axis=1), np.roll(y_wind[time_slice,level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=25)
+    ax7.quiverkey(q5, X=0.9, Y=1.05, U=25, label='25 m/s', labelpos='E', coordinates='axes')
+    plt.title('Wind vectors [m s-1], h=%s bar' %(heights[time_slice,level,0,0]))
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
+    plt.show()
+    
 
 
 def plot_coriolis(cubes, omega=0.64617667e-05):
