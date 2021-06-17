@@ -142,22 +142,6 @@ def ep_flux(cubes, omega=0.64617667e-05, long_slice=(0,-1), time_slice=1780):
     plt.clabel(CS, inline=False, colors='k', fmt='%1.1f')
     plt.show()
     
-    # THETAp_non = ep_zderivative(theta_data, logpressure)
-    # THETAp_non /= logpressure
-
-    # EP_phi_non = -XY_anomaly*np.repeat(latfac[:,np.newaxis], 144,1)
-    # EP_up_non = (np.repeat(coriolis[:,np.newaxis], 144,1)*np.repeat(rcosphi[:,np.newaxis], 144,1)*YTH_anomaly)/THETAp_non
-    # EP_phi_non_div = ep_latderivative(EP_phi_non, np.repeat(rsinphi[:,np.newaxis], 144,1))
-    # EP_up_non_div = ep_zderivative(EP_up_non, logpressure)
-    # EP_div_non = EP_phi_non_div + EP_up_non_div
-    # EP_div_non_mean = np.mean(EP_div_non, axis=0)
-    
-    # plt.contourf(np.roll(pressure.coord('longitude').points, 72), pressure.coord('latitude').points, EP_div_non_mean[level,:,:], brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
-    # plt.title('EP flux divergence for day=%s to %s, h=%s km' %(start/4, end/4, heights[level]))
-    # plt.xlabel('Longitude [degrees]')
-    # plt.ylabel('Latitude [degrees]')
-    # plt.colorbar(pad=0.1)
-    # plt.show()
 
 
     

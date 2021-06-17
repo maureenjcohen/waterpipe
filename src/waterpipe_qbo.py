@@ -105,7 +105,7 @@ def plot_hovmoellerx(cubes, radius=7160000, time='6-hours'):
     
 
 
-def plot_temp_anomaly(cubes, lat=45, levels=(35,44,47,53)):
+def plot_temp_anomaly(cubes, period=(0,220), lat=45, levels=(35,44,47,53)):
     
     """ Plot temperature anomaly, temperature minus the local time-averaged temperature
         Default latitude is the equator
@@ -113,9 +113,9 @@ def plot_temp_anomaly(cubes, lat=45, levels=(35,44,47,53)):
     
     for cube in cubes:
         if cube.standard_name == 'air_potential_temperature':
-            theta = cube.copy()
+            theta = cube[period[0]:period[1],:,:,:].copy()
         if cube.standard_name == 'air_pressure':
-            pressure = cube.copy()
+            pressure = cube[period[0]:period[1],:,:,:].copy()
         
     run_length, longitudes = theta.shape[0], theta.shape[3]/2
     
@@ -219,7 +219,7 @@ def plot_water_anomaly(cubes):
 def plot_wind_anomaly(cubes, lat=45, times=(0,1500,1780,2060)):
     
     for cube in cubes:
-        if cube.standard_name == 'eastward_wind' or cube.standard_name == 'x_wind':
+        if cube.standard_name == 'upward_air_velocity' or cube.standard_name == 'x_wind':
             x_wind = cube[:,:,lat,:].copy()
     
     longitudes = x_wind.shape[2]/2
@@ -236,10 +236,13 @@ def plot_wind_anomaly(cubes, lat=45, times=(0,1500,1780,2060)):
     
     anomaly = x_wind - x_wind_time_mean
     
+    zonal_mean = anomaly.collapsed('longitude', iris.analysis.MEAN)
+    zonal_anomaly = anomaly - zonal_mean
+    
     for time in times:
       
         plt.figure(figsize=(10,5))    
-        plt.contourf(np.arange(-longitudes,longitudes), np.array(heights[:58]), np.roll(anomaly[time,:58,:].data, 72, axis=1), brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+        plt.contourf(np.arange(-longitudes,longitudes), np.array(heights), np.roll(zonal_anomaly[time,:,:].data, 72, axis=1), brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
         plt.title('Zonal Wind Anomaly at Equator [m s-1], t = %s %s' %(time/4, time_unit))
         plt.xlabel('Longitude [degrees]')
         plt.ylabel('Height [m]')
@@ -1041,7 +1044,7 @@ def wheeler_kiladis(cubes, omega=0.64617667e-05, radius=7160000, period=(0,160),
     temperature = theta*((pressure/p0)**(287.05/1005)) # R and cp in J/kgK for 300K
     # Calculate absolute temperature from potential temperature
     
-    zonal_mean_temperature = temperature.collapsed('longitude', iris.analysis.MEAN)
+    zonal_mean_temperature = temperature.collapsed('t', iris.analysis.MEAN)
     eddy_temperature = temperature - zonal_mean_temperature
     print(eddy_temperature.shape)
     # Calculate eddy temperatures
