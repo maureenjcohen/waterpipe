@@ -11,11 +11,13 @@ import scipy as sp
 import matplotlib.pyplot as plt
 import matplotlib.cm as mpl_cm
 from matplotlib.colors import TwoSlopeNorm
+from iris.analysis import calculus
+
 
 
 brewer_redblu = mpl_cm.get_cmap('RdBu_r')
 
-def wave_acceleration(cubes, lat=45, long=0, start=0, end=240, plot=False):
+def wave_acceleration(cubes, level=47, lat=45, long=0, start=0, end=240, plot=False):
     
     for cube in cubes:
         if cube.standard_name == 'eastward_wind':
@@ -108,11 +110,12 @@ def wave_acceleration(cubes, lat=45, long=0, start=0, end=240, plot=False):
     acceleration[:,1:-1,...] = (array[:,2:,...]-array[:,0:-2,...])/(h[:,2:,...]-h[:,0:-2,...])
     
     """ Plot """
-    net_acc = np.mean(acceleration, axis=3) # + x_wind[start,:,31:59,long].data
-    net_acc = np.sum(net_acc, axis=0)
+    zonal_acc = np.mean(acceleration, axis=3) # + x_wind[start,:,31:59,long].data
+    net_acc = np.sum(zonal_acc, axis=0)
     
     x_mean = x_wind.collapsed('longitude', iris.analysis.MEAN)
-    mean_acc = np.mean(acceleration, axis=0)    
+    # mean_acc = np.mean(acceleration, axis=0)
+    x_acc = iris.analysis.calculus.differentiate(x_wind,'t')
 
     plt.figure(figsize=(10,5))
     plt.contourf(np.arange(-longitudes,longitudes), np.array(heights), np.roll(-mean_acc[:,lat,:], 72, axis=1), np.linspace(-5e-06,5e-06,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
@@ -134,5 +137,13 @@ def wave_acceleration(cubes, lat=45, long=0, start=0, end=240, plot=False):
     plt.ylabel('Height [m]')
     plt.clabel(CS, inline=False, colors='k', fmt='%1.1f')
     plt.show()
+    
+    # plt.figure(figsize=(10,5))
+    # plt.plot(np.arange(start,end-1), acceleration[:-1,level,lat,long], color='b')
+    # plt.plot(np.arange(start,end-1), x_acc[:,level,lat,long].data/21600, color='r')
+    # plt.xlabel('Time')
+    # plt.ylabel('Wind velocity')
+    # plt.show()
+    
     
     

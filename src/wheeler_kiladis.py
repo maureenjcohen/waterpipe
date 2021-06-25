@@ -68,8 +68,8 @@ def wheeler_kiladis(cubes, omega=0.64617667e-05, radius=7160000, start=0, end=16
                 highpass[np.abs(u_freq) < 5.1] = 0
                 
                 u_cleaned = np.real(sp.fftpack.ifft(highpass))
-                # u_bar = np.mean(u_cleaned)
-                # u_prime = u_cleaned - u_bar
+                u_bar = np.mean(u_cleaned)
+                u_prime = u_cleaned - u_bar
                 level_list.append(u_cleaned)
                 
             time_list.append(level_list)
@@ -107,14 +107,14 @@ def wheeler_kiladis(cubes, omega=0.64617667e-05, radius=7160000, start=0, end=16
     # nu_prime = np.array(nu_prime_list)
     # print(nu_prime.shape)
         
-    plt.figure(figsize=(10,5))    
-    plt.contourf(np.arange(-longitudes, longitudes), time, np.roll(u_prime[:,level,lat,:].data, 72, axis=1), brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
-    plt.title('$U^{\prime}$ at Equator, h=%s km' %(heights[level]))
-    plt.xlabel('Longitude [degrees]')
-    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-    plt.ylabel('Time [days]')
-    plt.colorbar(pad=0.1)
-    plt.show()            
+    # plt.figure(figsize=(12,6))    
+    # plt.contourf(np.arange(-longitudes, longitudes), time, np.roll(u_prime[:,level,lat,:].data, 72, axis=1), brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    # plt.title('$U^{\prime}$ at Equator, h=%s km' %(heights[level]))
+    # plt.xlabel('Longitude [degrees]')
+    # plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    # plt.ylabel('Time [days]')
+    # plt.colorbar(pad=0.1)
+    # plt.show()            
 
     
     """ Here you do the Fourier stuff"""
@@ -156,7 +156,7 @@ def wheeler_kiladis(cubes, omega=0.64617667e-05, radius=7160000, start=0, end=16
     # plan_2 = -wavenumber_scale/(5 + wavenumber_scale**2)
     # kelvin = c*wavenumber_scale
         
-    plt.contourf(wavenumbers, freqs[pos], signal[pos,:], np.linspace(0,-3,18), cmap=brewer_reds)
+    plt.contourf(wavenumbers, freqs[pos], signal[pos,:], np.linspace(0,3,18), cmap=brewer_reds)
     # plt.plot(wavenumbers, grav_0, color='k', linewidth=0.5)
     # plt.plot(wavenumbers, grav_1, color='k', linewidth=0.5)
     # plt.plot(wavenumbers, plan_1, color='k', linewidth=0.5)

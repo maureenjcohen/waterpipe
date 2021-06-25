@@ -27,11 +27,11 @@ def gravity_wave_drag(cubes, time=-1, level=47):
     # longitudes = drag.shape[3]
     # latitudes = drag.coord('latitude').points
     
-    plt.figure(figsize=(10,5))
+    plt.figure(figsize=(12,6))
     iplt.contour(drag[time,level,:,:], brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
-    plt.title('Temp change due to gravity wave drag [K], month %s, h=%s km' %(run_length[time],heights[level]))
+    plt.title('Temp change due to gravity wave drag [K], month %s, h=%s km' %(run_length[time],heights[level]), y=1.2)
     plt.colorbar(pad=0.1)
     plt.show()
        
