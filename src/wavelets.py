@@ -27,7 +27,7 @@ def wavelets(cubes, radius=7160000, scales=512, wavelet='mexh', x=(106,110), y=(
     Outputs: Plot of data, plot of scaleogram"""
     
     for cube in cubes:
-        if cube.standard_name == 'eastward_wind':
+        if cube.standard_name == 'x_wind':
             x_wind = cube.copy()    
     # Extract zonal wind data
     
@@ -38,10 +38,11 @@ def wavelets(cubes, radius=7160000, scales=512, wavelet='mexh', x=(106,110), y=(
     run_length, height = x_wind.shape[0], x_wind.shape[1]
     time = np.arange(0,run_length)*sampling
     # Gives time in (Earth) days if the sampling rate is in samples per day
-    heights = np.round(x_wind.coord('Hybrid height').points*1e-03,0)
+    heights = np.round(x_wind.coord('level_height').points*1e-03,0)
     lats, lat_points = x_wind.coord('latitude'), x_wind.coord('latitude').points
     longs, long_points = x_wind.coord('longitude'), x_wind.coord('longitude').points
     # Extract info for labelling plots
+    print(x_wind.shape)
 
     if lats.bounds == None:
         x_wind.coord('latitude').guess_bounds()

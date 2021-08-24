@@ -3,7 +3,7 @@
 """
 Created on Tue May 18 14:51:33 2021
 
-@author: s1144983
+@author: Mo Cohen
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,7 +13,7 @@ import iris, cartopy
 import cartopy.crs as ccrs
 import gif
 
-savepath = '/exports/csce/datastore/geos/users/s1144983/um_data/ch1_control/gifs'
+savepath = '/exports/csce/datastore/geos/users/s1144983/um_data/control/gifs'
 tall = iris.load('/exports/csce/datastore/geos/groups/aerosol/maureen/um_data/control_85km.nc')
 hot = mpl_cm.get_cmap('hot')
 blues = mpl_cm.get_cmap('Blues_r')

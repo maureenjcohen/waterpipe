@@ -17,7 +17,7 @@ from iris.analysis import calculus
 
 brewer_redblu = mpl_cm.get_cmap('RdBu_r')
 
-def wave_acceleration(cubes, level=47, lat=45, long=0, start=0, end=240, plot=False):
+def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=0, end=240, plot=False):
     
     for cube in cubes:
         if cube.standard_name == 'eastward_wind':
@@ -114,16 +114,28 @@ def wave_acceleration(cubes, level=47, lat=45, long=0, start=0, end=240, plot=Fa
     net_acc = np.sum(zonal_acc, axis=0)
     
     x_mean = x_wind.collapsed('longitude', iris.analysis.MEAN)
-    # mean_acc = np.mean(acceleration, axis=0)
-    x_acc = iris.analysis.calculus.differentiate(x_wind,'t')
+    x_avg = x_wind.collapsed('t', iris.analysis.MEAN)
+    mean_acc = np.mean(acceleration, axis=0)
+    # x_acc = iris.analysis.calculus.differentiate(x_wind,'t')
 
     plt.figure(figsize=(10,5))
-    plt.contourf(np.arange(-longitudes,longitudes), np.array(heights), np.roll(-mean_acc[:,lat,:], 72, axis=1), np.linspace(-5e-06,5e-06,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.contourf(np.arange(-longitudes,longitudes), np.array(heights), np.roll(-mean_acc[:,lat,:], 72, axis=1), np.linspace(-8e-05,8e-05,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.colorbar(pad=0.1)
+    contours = plt.contour(np.arange(-longitudes,longitudes), np.array(heights), np.roll(x_avg[:,lat,:].data, 72, axis=1), np.linspace(-80,80,12), colors='black', linewidths=0.6)
     plt.title('Wave-Induced Acceleration at Equator [m s-2], t = %s days' %(end/4))
     plt.xlabel('Longitude [degrees]')
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.ylabel('Height [m]')
+    plt.clabel(contours,inline=False, colors='k', fmt='%1.1f')
+    plt.show()
+    
+    plt.figure(figsize=(10,5))
+    plt.contourf(np.arange(-longitudes,longitudes), np.array(heights), -mean_acc[:,lat,:],  np.linspace(-8e-06,8e-06,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.colorbar(pad=0.1)
+    plt.title('Wave-Induced Acceleration at Equator [m s-2], t = %s days' %(end/4))
+    plt.xlabel('Longitude [degrees]')
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('0','30E','60E','90E','120E','150E','180E/W','150W','120W','90W','60W','30W','0'))
+    plt.ylabel('Height [m]')
     plt.show()
                 
     x_axis = x_wind.coord('latitude').points
@@ -138,12 +150,14 @@ def wave_acceleration(cubes, level=47, lat=45, long=0, start=0, end=240, plot=Fa
     plt.clabel(CS, inline=False, colors='k', fmt='%1.1f')
     plt.show()
     
-    # plt.figure(figsize=(10,5))
-    # plt.plot(np.arange(start,end-1), acceleration[:-1,level,lat,long], color='b')
-    # plt.plot(np.arange(start,end-1), x_acc[:,level,lat,long].data/21600, color='r')
-    # plt.xlabel('Time')
-    # plt.ylabel('Wind velocity')
-    # plt.show()
+    plt.figure(figsize=(10,5))
+    plt.contourf(np.arange(-longitudes,longitudes), x_axis, np.roll(-mean_acc[hlevel,:,:],72, axis=1), np.linspace(-5e-05,5e-05,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.title('Wave-Induced Acceleration [m s-2] at h=%s m' %(y_axis[hlevel]))
+    plt.xlabel('Longitude [degrees]')
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    plt.ylabel('Latitude [degrees]')
+    plt.colorbar(pad=0.1)
+    plt.show()
     
     
     
