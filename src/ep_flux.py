@@ -3,7 +3,7 @@
 """
 Created on Mon May 17 14:15:57 2021
 
-@author: s1144983
+@author: Mo Cohen
 """
 
 import os, iris, cartopy, windspharm, pywt

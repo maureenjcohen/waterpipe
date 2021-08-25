@@ -31,7 +31,7 @@ def vapour_series(cubes, radius=7160000, level=47, x=(0,4), y=(43,47)):
     
     run_length, height = vapour.shape[0], vapour.shape[1]
     # Gives time in (Earth) days if the sampling rate is in samples per day
-    heights = np.round(vapour.coord('Hybrid height').points*1e-03,0)
+    heights = np.round(vapour.coord('level_height').points*1e-03,0)
     lats, lat_points = vapour.coord('latitude'), vapour.coord('latitude').points
     longs, long_points = vapour.coord('longitude'), vapour.coord('longitude').points
     
@@ -48,8 +48,8 @@ def vapour_series(cubes, radius=7160000, level=47, x=(0,4), y=(43,47)):
     
     lat_index, long_index = int((y[0]+y[1])/2), int((x[0]+x[1])/2)
 
-    plt.plot(np.arange(0,run_length), data, linestyle='-', color='b')
-    plt.title('Specific humidity at lat=%s, long=%s, h=%s km' %(lat_points[lat_index], long_points[long_index], heights[level]))
+    plt.plot(np.arange(0,run_length)*0.25, data, linestyle='-', color='b')
+    plt.title('Q at lat=%s, long=%s, h=%s km' %(lat_points[lat_index], long_points[long_index], heights[level]))
     plt.xlabel('Time [days]') 
     plt.ylabel('Water vapour [kg kg-1]')
     plt.show()
@@ -62,14 +62,14 @@ def vapour_anomaly(cubes, lat=45, long=0, time_slice=-1):
         if cube.standard_name == 'specific_humidity':
             vapour = cube.copy()
             
-    mean_vapour = vapour.collapsed('t', iris.analysis.MEAN)
+    mean_vapour = vapour.collapsed('time', iris.analysis.MEAN)
     anomaly = vapour - mean_vapour
     data = vapour.data
     
     run_length = vapour.shape[0]
     
     x_axis = vapour.coord('longitude').points
-    y_axis = vapour.coord('Hybrid height').points
+    y_axis = vapour.coord('level_height').points
     
     plt.contourf(np.arange(0,run_length)*0.25, y_axis, data[:,:,lat,long].T, bg.N, cmap=bg, norm=TwoSlopeNorm(0))
     plt.title('Water vapour abundance at equator, long=%s' %x_axis[long])

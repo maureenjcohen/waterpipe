@@ -3,7 +3,7 @@
 """
 Created on Tue May 18 13:24:18 2021
 
-@author: s1144983
+@author: Mo Cohen
 """
 import numpy as np
 import iris
