@@ -47,6 +47,12 @@ def vapour_series(cubes, radius=7160000, level=47, x=(0,4), y=(43,47)):
     data = patch_mean.data
     
     lat_index, long_index = int((y[0]+y[1])/2), int((x[0]+x[1])/2)
+    
+    avg = np.mean(data)
+    smallest = np.min(data)
+    biggest = np.max(data)
+    print('The average specific humidity is %s kg/kg' %avg)
+    print('The min and max are %s and %s' %(smallest, biggest))
 
     plt.plot(np.arange(0,run_length)*0.25, data, linestyle='-', color='b')
     plt.title('Q at lat=%s, long=%s, h=%s km' %(lat_points[lat_index], long_points[long_index], heights[level]))

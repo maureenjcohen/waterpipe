@@ -19,17 +19,20 @@ reds = mpl_cm.get_cmap('brewer_Reds_09')
 def plotter(cubes, time=-1, level=47):
     
     for cube in cubes:
-        if cube.standard_name == 'specific_humidity':
+        if cube.long_name == 'deep convection indicator':
             data = cube.copy()            
     
     run_length = np.arange(0,data.shape[0])
-    # longitudes = drag.shape[3]
-    # latitudes = drag.coord('latitude').points
+    longitudes = data.shape[2]
+    latitudes = data.shape[1]
     
-    plt.figure(figsize=(12,6))
-    iplt.contourf(data[time,level,:,:], reds.N, cmap=reds)
-    ax = plt.gca()
-    ax.gridlines(draw_labels=True)
-    plt.title('Specific humidity, month %s' %(run_length[time]+1))
+    plt.figure(figsize=(10,5))
+    plt.contourf(np.arange(-longitudes/2, longitudes/2), np.arange(-latitudes/2, latitudes/2), np.roll(data[time,:,:].data, 72, axis=1), reds.N, cmap=reds)
+    plt.title('Deep Convection Indicator, t=270.0 to 300.0 days')
+    plt.xlabel('Longitude [degrees]')
+    plt.ylabel('Latitude [degrees]')
+    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))  
     plt.colorbar(pad=0.1)
+    plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/deepconvection.eps', format='eps')   
     plt.show()

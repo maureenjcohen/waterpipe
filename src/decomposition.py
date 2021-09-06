@@ -40,7 +40,7 @@ def decomposition(cubes, n=3, time_slice=-1, level=17):
     # Regrid so that all three cubes are on the same x, y, z grid. Uses the x_wind as reference for the others
     
     p_heights = np.round(pressure.data*1e-05,2)
-    km_heights = np.round(pressure.coord('level_height').points*1e-03,1)
+    km_heights = np.round(pressure.coord('level_height').points*1e-03,0)
     # Extract pressure and kilometer values for labeling the plots
     
     winds = windspharm.iris.VectorWind(x_wind,y_wind)
@@ -64,12 +64,13 @@ def decomposition(cubes, n=3, time_slice=-1, level=17):
     # Create a quiver plot. The np.roll function moves the cube data so the substellar point is centred.
     ax1.quiverkey(q1, X=0.9, Y=1.05, U=25, label='25 m/s', labelpos='E', coordinates='axes')
     # This creates the key with the arrow size. The value of U, the label string, and the value of scale in the previous line should all match.
-    plt.title('Wind vectors [m s-1], h=%s bar, %s km' %(p_heights[time_slice,level,0,0], km_heights[level]))
+    plt.title('Wind Vectors [m/s], h = %s km' %(km_heights[level]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N')) 
     # Labelled the longs and lats manually 
+    plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/circulation.eps', format='eps')   
     plt.show()
     
     fig2, ax2 = plt.subplots(figsize = (10,5)) 
@@ -97,11 +98,12 @@ def decomposition(cubes, n=3, time_slice=-1, level=17):
     fig4, ax4 = plt.subplots(figsize = (10,5)) 
     q4 = ax4.quiver(X[::n,::n], Y[::n,::n], np.roll(eddy_upsi[time_slice,level,::n,::n].data, 72, axis=1), np.roll(-eddy_vpsi[time_slice,level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=4)
     ax4.quiverkey(q4, X=0.9, Y=1.05, U=4, label='4 m/s', labelpos='E', coordinates='axes')
-    plt.title('Eddy rotational component of wind [m s-1], h=%s bar, %s km' %(p_heights[time_slice,level,0,0], km_heights[level]))
+    plt.title('Eddy Rotational Component of Wind [m/s], h = %s km' %(km_heights[level]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-    plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
+    plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N')) 
+    plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/eddy_rot.eps', format='eps')   
     plt.show()
     
     
