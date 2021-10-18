@@ -10,6 +10,7 @@ import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
 import matplotlib.cm as mpl_cm
+from matplotlib import ticker
 from matplotlib.colors import TwoSlopeNorm
 from iris.analysis import calculus
 
@@ -69,14 +70,16 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
     if plot == True: 
         
         plt.figure(figsize=(10,5))    
-        plt.contourf(np.arange(-longitudes, longitudes), np.array(heights_km), np.roll(u_prime[-1,:,lat,:], 72, axis=1), np.linspace(-20,20,40), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+        plt.contourf(np.arange(-longitudes, longitudes), np.array(heights_km), np.roll(u_prime[-1,:,lat,:], 72, axis=1), np.linspace(-35,35,70), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
         plt.title('$U^{\prime}$ at Equator, t=%s days' %(end/4))
         plt.xlabel('Longitude [degrees]')
         plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
         plt.ylabel('Height [km]')
         cbar = plt.colorbar(pad=0.1)
+        cbar.locator = ticker.AutoLocator()
+        cbar.update_ticks()
         cbar.ax.set_title('m/s')
-        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/uprime_%s.eps' %(end), format='eps')  
+        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/uprime_%s_ticks.eps' %(end), format='eps')  
         plt.show()    
 
     """ Calculate w-prime"""
@@ -124,6 +127,8 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
     plt.figure(figsize=(10,5))
     plt.contourf(np.arange(-longitudes,longitudes), np.array(heights_km), np.roll(-mean_acc[:,lat,:], 72, axis=1), np.linspace(-8e-05,8e-05,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     mbar = plt.colorbar(pad=0.1)
+    mbar.locator = ticker.AutoLocator()
+    mbar.update_ticks()
     mbar.set_label('$m/s^2$')
     contours = plt.contour(np.arange(-longitudes,longitudes), np.array(heights_km), np.roll(x_avg[:,lat,:].data, 72, axis=1), np.linspace(-80,80,12), colors='black', linewidths=0.3)
     plt.title('Mean Wave-Induced Acceleration at Equator, t=%s to %s days' %(start/4, end/4))
@@ -131,7 +136,7 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.ylabel('Height [km]')
     plt.clabel(contours,inline=False, colors='k', fmt='%1.1f')
-    plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/jetexit_%s.eps' %(end), format='eps')  
+    plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/jetexit_%s_ticks.eps' %(end), format='eps')  
     plt.show()
     
     # plt.figure(figsize=(10,5))
@@ -148,13 +153,15 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
     plt.figure(figsize=(8,10))
     plt.contourf(x_axis, y_axis, -net_acc, brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     wbar = plt.colorbar(pad=0.1)
+    wbar.locator = ticker.AutoLocator()
+    wbar.update_ticks()
     wbar.set_label('$m/s^2$', rotation=90)
     CS = plt.contour(x_axis, y_axis, (x_mean[-1,:,:].data - x_mean[0,:,:].data), colors='black', linewidths=1.5)
     plt.title('Mean Zonal Mean Wave-Induced Acceleration, t=%s to %s days' %(start/4, end/4))
     plt.xlabel('Latitude [degrees]')
     plt.ylabel('Height [km]')
     plt.clabel(CS, inline=False, colors='k', fmt='%1.1f')
-    plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/waveinducedacc_%s.eps' %(end), format='eps')  
+    plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/waveinducedacc_%s_ticks.eps' %(end), format='eps')  
     plt.show()
     
     # plt.figure(figsize=(10,5))

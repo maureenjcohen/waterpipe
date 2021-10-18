@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 
 
-def decomposition(cubes, n=3, time_slice=-1, level=17):  
+def decomposition(cubes, n=3, start=0, end=120, level=47):  
     
     """ Uses the windspharm package to perform a Helmholtz decomposition on an Iris cube
         Helmholtz composition splits the vector field into its divergent and rotational components
@@ -25,15 +25,19 @@ def decomposition(cubes, n=3, time_slice=-1, level=17):
             
     for cube in cubes:
         if cube.standard_name == 'x_wind':
-            x_wind = cube.copy()
+            x_wind = cube[start:end,:,:,:].copy()
         if cube.standard_name == 'y_wind':
-            y_wind = cube.copy()
+            y_wind = cube[start:end,:,:,:].copy()
         if cube.standard_name =='air_pressure':
-            pressure = cube.copy()
+            pressure = cube[start:end,:,:,:].copy()
             
     # Select the cubes we want from the cube list
  
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+    
+    x_wind = x_wind.collapsed('time', iris.analysis.MEAN)
+    y_wind = y_wind.collapsed('time', iris.analysis.MEAN)
+    pressure = pressure.collapsed('time', iris.analysis.MEAN)
     
     height = [('level_height', x_wind.coord('level_height').points)]
     pressure = pressure.interpolate(height, iris.analysis.Linear())
@@ -60,7 +64,7 @@ def decomposition(cubes, n=3, time_slice=-1, level=17):
     # Create meshgrid with the spatial dimensions of the Iris cube
     
     fig1, ax1 = plt.subplots(figsize = (10,5)) 
-    q1 = ax1.quiver(X[::n,::n], Y[::n,::n], np.roll(x_wind[time_slice,level,::n,::n].data, 72, axis=1), np.roll(y_wind[time_slice,level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=25)
+    q1 = ax1.quiver(X[::n,::n], Y[::n,::n], np.roll(x_wind[level,::n,::n].data, 72, axis=1), np.roll(y_wind[level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=25)
     # Create a quiver plot. The np.roll function moves the cube data so the substellar point is centred.
     ax1.quiverkey(q1, X=0.9, Y=1.05, U=25, label='25 m/s', labelpos='E', coordinates='axes')
     # This creates the key with the arrow size. The value of U, the label string, and the value of scale in the previous line should all match.
@@ -70,15 +74,15 @@ def decomposition(cubes, n=3, time_slice=-1, level=17):
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N')) 
     # Labelled the longs and lats manually 
-    plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/circulation.eps', format='eps')   
+    # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/circulation.eps', format='eps')   
     plt.show()
     
     fig2, ax2 = plt.subplots(figsize = (10,5)) 
-    q2 = ax2.quiver(X[::n,::n], Y[::n,::n], np.roll(uchi[time_slice,level,::n,::n].data, 72, axis=1), np.roll(-vchi[time_slice,level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=3)
+    q2 = ax2.quiver(X[::n,::n], Y[::n,::n], np.roll(uchi[level,::n,::n].data, 72, axis=1), np.roll(-vchi[level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=3)
     # Note -vchi is plotted. Same with the other y components below.
     ax2.quiverkey(q2, X=0.9, Y=1.05, U=3, label='3 m/s', labelpos='E', coordinates='axes')
     # Made the arrow size smaller since the divergent winds are weaker
-    plt.title('Divergent component of wind [m s-1], h=%s bar, %s km' %(p_heights[time_slice,level,0,0], km_heights[level]))
+    plt.title('Divergent component of wind [m s-1], h=%s bar, %s km' %(p_heights[level,0,0], km_heights[level]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
@@ -86,9 +90,9 @@ def decomposition(cubes, n=3, time_slice=-1, level=17):
     plt.show() 
                 
     fig3, ax3 = plt.subplots(figsize = (10,5)) 
-    q3 = ax3.quiver(X[::n,::n], Y[::n,::n], np.roll(upsi[time_slice,level,::n,::n].data, 72, axis=1), np.roll(-vpsi[time_slice,level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=25)
+    q3 = ax3.quiver(X[::n,::n], Y[::n,::n], np.roll(upsi[level,::n,::n].data, 72, axis=1), np.roll(-vpsi[level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=25)
     ax3.quiverkey(q3, X=0.9, Y=1.05, U=25, label='25 m/s', labelpos='E', coordinates='axes')
-    plt.title('Rotational component of wind [m s-1], h=%s bar, %s km' %(p_heights[time_slice,level,0,0], km_heights[level]))
+    plt.title('Rotational component of wind [m s-1], h=%s bar, %s km' %(p_heights[level,0,0], km_heights[level]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
@@ -96,14 +100,14 @@ def decomposition(cubes, n=3, time_slice=-1, level=17):
     plt.show()
     
     fig4, ax4 = plt.subplots(figsize = (10,5)) 
-    q4 = ax4.quiver(X[::n,::n], Y[::n,::n], np.roll(eddy_upsi[time_slice,level,::n,::n].data, 72, axis=1), np.roll(-eddy_vpsi[time_slice,level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=4)
+    q4 = ax4.quiver(X[::n,::n], Y[::n,::n], np.roll(eddy_upsi[level,::n,::n].data, 72, axis=1), np.roll(-eddy_vpsi[level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=4)
     ax4.quiverkey(q4, X=0.9, Y=1.05, U=4, label='4 m/s', labelpos='E', coordinates='axes')
     plt.title('Eddy Rotational Component of Wind [m/s], h = %s km' %(km_heights[level]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N')) 
-    plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/eddy_rot.eps', format='eps')   
+    # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/eddy_rot.eps', format='eps')   
     plt.show()
     
     

@@ -5,10 +5,9 @@ Created on Tue Jun 15 16:03:25 2021
 
 @author: Maureen Cohen
 """
-import iris, cartopy, pywt
+import iris, pywt
 import matplotlib.pyplot as plt
 import matplotlib.cm as mpl_cm
-from matplotlib.colors import TwoSlopeNorm
 from iris.coord_systems import GeogCS
 import numpy as np
 import scipy as sp

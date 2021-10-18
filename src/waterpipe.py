@@ -248,27 +248,28 @@ def plot_temp_profile(cubes, time_slice=-1):
         if cube.standard_name == 'air_pressure':
             air_pressure = cube.copy()
         if cube.standard_name == 'air_temperature':
-            if len(cube.cell_methods) != 0 and cube.cell_methods[0].method == 'mean':
-                air_temp_bl = cube.copy()
+            # if len(cube.cell_methods) != 0 and cube.cell_methods[0].method == 'mean':
+            air_temp_bl = cube.copy()
             
+    heights = np.round(potential_temp.coord('Hybrid height').points*1e-03,0)
     p0 = iris.coords.AuxCoord(100000.0, long_name='reference_pressure', units='Pa')
     p0.convert_units(air_pressure.units)
     absolute_temp = potential_temp*((air_pressure/p0)**(287.05/1005)) # R and cp in J/kgK for 300K
     
-    plt.plot(absolute_temp[time_slice,:,45,0].data, np.arange(0,absolute_temp.shape[1]))
+    plt.plot(absolute_temp[time_slice,:,45,0].data, heights)
     plt.title('Temperature Profile at Substellar Point')
     plt.xlabel('Temperature [K]')
     plt.ylabel('Height [km]')
     plt.show()
     
-    plt.plot(absolute_temp[time_slice,:,45,72].data, np.arange(0,absolute_temp.shape[1]))
+    plt.plot(absolute_temp[time_slice,:,45,72].data, heights)
     plt.title('Temperature Profile at Antistellar Point')
     plt.xlabel('Temperature [K]')
     plt.ylabel('Height [km]')
     plt.show()
     
-    plt.plot(absolute_temp[time_slice,:,45,0].data, np.arange(0,absolute_temp.shape[1]), color='r', label='Substellar')
-    plt.plot(absolute_temp[time_slice,:,45,72].data, np.arange(0,absolute_temp.shape[1]), color='b', label='Antistellar')
+    plt.plot(absolute_temp[time_slice,:,45,0].data, heights, color='r', label='Substellar')
+    plt.plot(absolute_temp[time_slice,:,45,72].data, heights, color='b', label='Antistellar')
     plt.title('Temperature Profiles at Substellar and Antistellar Point')
     plt.xlabel('Temperature [K]')
     plt.ylabel('Height [km]')

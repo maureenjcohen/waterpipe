@@ -12,6 +12,7 @@ Functions relating to QBO-like phenomena
 import os, iris, cartopy, windspharm, pywt
 import matplotlib.pyplot as plt
 import matplotlib.cm as mpl_cm
+from matplotlib import ticker
 from matplotlib.colors import TwoSlopeNorm
 import iris.plot as iplt
 import iris.coords
@@ -83,13 +84,13 @@ def plot_hovmoellerx(cubes, radius=7160000, time='days'):
             side = 'Dayside'
         else:
             side = 'Nightside'
-        plt.contourf(np.arange(0,run_length)*0.25, np.array(heights), cube.data.T, brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+        plt.contourf(np.arange(0,run_length), np.array(heights), cube.data.T, brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
         plt.title('%s Mean Zonal Equatorial Wind' %(side))
         plt.xlabel('Time [%s]' %(time))
         plt.ylabel('Height [km]')
         cbar = plt.colorbar(pad=0.1)
         cbar.ax.set_title('m/s')
-        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/hovmoeller_%s.eps' %(side), format='eps')   
+        # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/hovmoeller_%s.eps' %(side), format='eps')   
         plt.show()
     
     for cube in (dayside_zonal_mean, nightside_zonal_mean):
@@ -97,14 +98,14 @@ def plot_hovmoellerx(cubes, radius=7160000, time='days'):
             side = 'Dayside'
         else:
             side = 'Nightside'  
-        plt.contourf(np.arange(0,run_length)*0.25, np.arange(-45,45), cube[:,47,:].data.T, brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+        plt.contourf(np.arange(0,run_length), np.arange(-45,45), cube[:,47,:].data.T, brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
         plt.title('%s Mean Zonal Wind at 41 km' %(side))
         plt.xlabel('Time [%s]' %(time))
         plt.ylabel('Latitude')
         plt.yticks((-45,0,45),('90S', '0', '90N'))
         mbar = plt.colorbar(pad=0.1)
         mbar.ax.set_title('m/s')
-        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/topview_%s.eps' %(side), format='eps')   
+        # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/topview_%s.eps' %(side), format='eps')   
         plt.show()
     
 
@@ -133,20 +134,20 @@ def plot_temp_anomaly(cubes, period=(0,220), lat=45, levels=(35,44,47,53)):
     p0.convert_units(pressure.units)
     temperature = theta*((pressure/p0)**(287.05/1005)) # R and cp in J/kgK for 300K
     
-    temp_time_mean = temperature.collapsed('t', iris.analysis.MEAN)
+    temp_time_mean = temperature.collapsed('time', iris.analysis.MEAN)
     anomaly = temperature - temp_time_mean
     
     for level in levels:
             
         plt.figure(figsize=(10,5))
-        plt.contourf(np.arange(-longitudes,longitudes), np.arange(0, run_length)*0.25, np.roll(anomaly[:,level,lat,:].data, 72, axis=1),brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+        plt.contourf(np.arange(-longitudes,longitudes), np.arange(0, run_length), np.roll(anomaly[:,level,lat,:].data, 72, axis=1),brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
         plt.title('Temperature Anomaly at Equator, h=%s km' %(heights[level]))
         plt.xlabel('Longitude [degrees]')
         plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-        plt.ylabel('Time [days]')
+        plt.ylabel('Time [months]')
         cbar = plt.colorbar(pad=0.1)
         cbar.ax.set_title('K')
-        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/abs_temp_anomaly_%s.eps' %(heights[level]), format='eps')
+        # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/abs_temp_anomaly_%s.eps' %(heights[level]), format='eps')
 #        plt.show()  
     
  
@@ -276,8 +277,8 @@ def plot_u(cubes, start=640, end=800,lat=45, level=47):
             heights = np.round(x_wind.coord('level_height').points*1e-03,0)
     
     plt.figure(figsize=(10,5))
-    plt.contourf(np.arange(-longitudes,longitudes), np.arange(0, run_length)*0.25, np.roll(x_wind[:,level,:].data, 72, axis=1),brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
-    plt.title('Eastward Wind at Equator, h=%s km, t=%s to %s days' %(heights[level], start/4, end/4))
+    plt.contourf(np.arange(-longitudes,longitudes), np.arange(0, run_length), np.roll(x_wind[:,level,:].data, 72, axis=1),brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.title('Eastward Wind at Equator, h=%s km, t=%s to %s days' %(heights[level], start, end))
     plt.xlabel('Longitude [degrees]')
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.ylabel('Time [days]')
@@ -285,26 +286,29 @@ def plot_u(cubes, start=640, end=800,lat=45, level=47):
     cbar.ax.set_title('m/s')
     plt.show()  
     
+    print(np.min(x_wind[:,level,:].data), np.max(x_wind[:,level,:].data))
     plt.figure(figsize=(10,5))
-    plt.contourf(np.arange(-longitudes,longitudes), np.arange(0, run_length)*0.25, x_wind[:,level,:].data,brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.contourf(np.arange(-longitudes,longitudes), np.arange(0, run_length), x_wind[:,level,:].data,brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Eastward Wind at Equator, h=%s km, t=%s to %s days' %(heights[level], start/4, end/4))
     plt.xlabel('Longitude [degrees]')
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('0','30E','60E','90E','120E','150E','180E/W','150W','120W','90W','60W','30W','0'))
     plt.ylabel('Time [days]')
-    plt.ylabel('Time [days]')
-    mbar = plt.colorbar(pad=0.1)
+    mbar = plt.colorbar(pad=0.1) 
+    mbar.locator = ticker.AutoLocator()
+    mbar.update_ticks()
+    # mbar.ax.set_yticklabels(['140','120','100','80','60','40','20','0','-20','-40','-60','-80', '-100'])
     mbar.ax.set_title('m/s')
-    plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/zonalwind_%s_to_%s.eps' %(start, end), format='eps')  
+    # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/zonalwind_%s_to_%s_ticks.eps' %(start, end), format='eps')  
     plt.show() 
     
     
 def u_prime(cubes, time_slice=1780, lat=45, level=47, bandpass=False):
     
     for cube in cubes:
-        if cube.standard_name == 'eastward_wind':
+        if cube.standard_name == 'x_wind':
             x_wind = cube[time_slice,:,lat,:].copy()
     
-    heights = np.round(x_wind.coord('Hybrid height').points*1e-03, 0)
+    heights = np.round(x_wind.coord('level_height').points*1e-03, 0)
     longitudes = x_wind.shape[1]/2
     
     dayside = x_wind.intersection(longitude=(-90,89))

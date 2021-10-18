@@ -52,7 +52,7 @@ def plot_zonal_wind(cubes, time_slice=-1):
     dayside_zonal_time = dayside_zonal_end.collapsed('time', iris.analysis.MEAN)
     nightside_zonal_time = nightside_zonal_end.collapsed('time', iris.analysis.MEAN)
     
-    CS_day = iplt.contourf(dayside_zonal_mean[time_slice,:,:], levels=np.linspace(-170,130,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    CS_day = iplt.contourf(dayside_zonal_mean[time_slice,:,:], levels=brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Dayside Zonal Mean Zonal Wind [m s-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
@@ -60,7 +60,7 @@ def plot_zonal_wind(cubes, time_slice=-1):
     plt.colorbar(pad=0.1)
     plt.show()
     
-    CS_night = iplt.contourf(nightside_zonal_mean[time_slice,:,:], levels=np.linspace(-170,130,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    CS_night = iplt.contourf(nightside_zonal_mean[time_slice,:,:], levels=brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Nightside Zonal Mean Zonal Wind [m s-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
@@ -68,7 +68,7 @@ def plot_zonal_wind(cubes, time_slice=-1):
     plt.colorbar(pad=0.1)
     plt.show()
     
-    CS_day = iplt.contourf(x_mean[:,:,0], levels=np.linspace(-170,130,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    CS_day = iplt.contourf(x_mean[:,:,0], levels=brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Mean Zonal Wind, Long 0 [m s-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
@@ -76,7 +76,7 @@ def plot_zonal_wind(cubes, time_slice=-1):
     plt.colorbar(pad=0.1)
     plt.show()
     
-    CS_night = iplt.contourf(x_mean[:,:,72], levels=np.linspace(-170,130,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    CS_night = iplt.contourf(x_mean[:,:,72], levels=brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Mean Zonal Wind, Long 180 [m s-1]', y=1.05)
     plt.ylabel('Height [m]')
     plt.xlabel('Latitude [degrees]')
@@ -663,7 +663,7 @@ def vorticity_section(cubes, time_slice=-1, omega=0.64617667):
     
     zonal_relative_vort = np.mean(relative_vort.data, axis=2)
     
-    plt.contourf(np.array(lats[5:85]), np.array(heights), zonal_relative_vort[:,5:85], brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.contourf(np.array(lats[5:85]), np.array(heights), zonal_relative_vort[:,5:85], levels=np.linspace(-0.000012,0.000012,200), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Mean Zonal Relative Vorticity, longitudes %s to %s' %(longs[0], longs[-1]))
     plt.ylabel('Height [km]')
     plt.xlabel('Latitude [degrees]')
