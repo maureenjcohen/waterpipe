@@ -251,7 +251,7 @@ def plot_temp_profile(cubes, time_slice=-1):
             # if len(cube.cell_methods) != 0 and cube.cell_methods[0].method == 'mean':
             air_temp_bl = cube.copy()
             
-    heights = np.round(potential_temp.coord('Hybrid height').points*1e-03,0)
+    heights = np.round(potential_temp.coord('level_height').points*1e-03,0)
     p0 = iris.coords.AuxCoord(100000.0, long_name='reference_pressure', units='Pa')
     p0.convert_units(air_pressure.units)
     absolute_temp = potential_temp*((air_pressure/p0)**(287.05/1005)) # R and cp in J/kgK for 300K

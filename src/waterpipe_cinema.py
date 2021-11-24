@@ -253,26 +253,28 @@ y_wind = y_wind.data
 speed = speed.data
 
 @gif.frame
-def gif_streamlines(x_wind, y_wind, level, heights, time_slice=42):   
+def gif_streamlines(x_wind, y_wind, heights, time_slice, level=15):   
     
     X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
     fig = plt.figure(figsize = (10, 4)) 
     strm = plt.streamplot(X, Y, np.roll(x_wind[time_slice,level,:,:].data, 72, axis=1), np.roll(y_wind[time_slice,level,:,:].data, 72, axis=1), density = 0.5, color=np.roll(speed[time_slice,level,:,:].data, 72, axis=1), cmap=brewer_reds)
     # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
     # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
-    fig.colorbar(strm.lines)
-    plt.title('Wind speed and direction [m s-1], h=%s km, t=%s months' %(heights[level], time_slice+1))
+    cbar = plt.colorbar(strm.lines)
+    cbar.set_ticks(np.arange(0,100,10))
+    cbar.ax.set_title('m/s')
+    plt.title('Wind speed and direction, h=%s km, t=%s months' %(heights[level], time_slice+1))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
     plt.xticks((-72,-52,-32,-12,0,12,32,52,72),('180W','140W','100W','60W','0','60E','100E','140E','180E'))
     plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
 
 frames = []
-for level in range(60):
-    frame = gif_streamlines(x_wind, y_wind, level, heights)
+for time_slice in range(60):
+    frame = gif_streamlines(x_wind, y_wind, heights, time_slice)
     frames.append(frame)
 
-gif.save(frames, str(savepath) + '/streamlines_42.gif', duration = 30, unit = 's', between='startend')
+gif.save(frames, str(savepath) + '/streamlines_15_slow_fixed.gif', duration = 90, unit = 's', between='startend')
 
 
 """ CODE BLOCK FOR OUTGOING LW RADIATION """
