@@ -164,6 +164,13 @@ def cloud_type(cubes, time_slice=-1, long1=36, long2=108):
         if cube.standard_name == 'mass_fraction_of_cloud_liquid_water_in_air':
             liquid_condensate_raw = cube.copy()
     
+    if long1==36 and long2==108:
+        titleloc = 'Terminators'
+    elif long1==143 and long2==0:
+        titleloc = 'Substellar Point'
+    else:
+        titleloc = '20W'
+    
     liquid_cloud = liquid_cloud_raw.data
     ice_cloud = ice_cloud_raw.data
     ice_condensate = ice_condensate_raw.data
@@ -210,7 +217,7 @@ def cloud_type(cubes, time_slice=-1, long1=36, long2=108):
     ax2.plot(time_axis, total_liq, color='r', label='Liquid')
     ax2.tick_params(axis='y', labelcolor='r')
     
-    plt.title('Mean Ice and Liquid Condensate at Substellar Point')
+    plt.title('Mean Ice and Liquid Condensate at %s' %titleloc)
     fig.tight_layout()
     plt.show()
     
@@ -225,7 +232,7 @@ def cloud_type(cubes, time_slice=-1, long1=36, long2=108):
     # plt.show()
     plt.plot(time_axis, total_ice, color='b', label='Ice')
     plt.plot(time_axis, total_liq, color='r', label='Liquid')
-    plt.title('Mean Ice and Liquid Condensate at Substellar Point')
+    plt.title('Mean Ice and Liquid Condensate at %s' %titleloc)
     plt.xlabel('Time [days]')
     plt.ylabel('Cloud condensate [kg/kg]')
     plt.legend()
@@ -238,7 +245,7 @@ def wind_speed(cubes, level=25, lat=45):
         if cube.standard_name == 'x_wind': 
             x_wind = cube.copy()
             y_axis = np.round(x_wind.coord('level_height').points*1e-03,0)
-            time_unit = 'months'
+            time_unit = 'days'
 
         elif cube.standard_name == 'eastward_wind':
             x_wind = cube.copy()
@@ -252,14 +259,14 @@ def wind_speed(cubes, level=25, lat=45):
     data = zonal_mean[:,level,lat].data
     
     plt.plot(time_axis, data)
-    plt.title('Zonal mean wind speed at h = %s [m/s]' %y_axis[level])
+    plt.title('Zonal mean zonal wind at equator, h = %s km [m/s]' %y_axis[level])
     plt.xlabel('Time [%s]' %time_unit)
     plt.ylabel('Wind speed [m/s]')
     plt.show()
     
 
 
-def plot_vorticity(cubes, level=47, time_slice=-1, omega=0.64617667):
+def plot_vorticity(cubes, level=15, time_slice=-1, omega=0.64617667):
     
     """ Uses windspharm package to plot the vorticity       """
     
@@ -324,7 +331,7 @@ def vorticity_series(cubes, level=25, lats=(60,76), longs=(72,109), omega=0.6461
     plt.show()
     
     
-def plot_energy(cubes, lats=(0,13), longs=(30,61)):
+def plot_energy(cubes, lats=(30,61), longs=(0,13)):
 
     for cube in cubes:
         if cube.standard_name == 'surface_net_downward_shortwave_flux':

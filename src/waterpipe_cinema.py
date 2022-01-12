@@ -341,8 +341,9 @@ gif.save(frames, str(savepath) + '/airtemp.gif', duration = 30, unit = 's', betw
 
 
 """ CODE BLOCK FOR CLOUD COVER """
+savepath = '/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_control_85km'
 
-for cube in fast_only:    
+for cube in clouds:    
     if cube.long_name == 'cloud_area_fraction_assuming_maximum_random_overlap':
         cloud_cover = cube.copy()
     
@@ -359,14 +360,13 @@ def gif_cloudcover(i, cloud_cover):
     
 #run_length = mean_absolute_temp.shape[0]    
 frames = []
-for i in range(1740,1800):
+for i in range(0,600):
     frame = gif_cloudcover(i, cloud_cover)
     frames.append(frame)
     
-gif.save(frames, str(savepath) + '/clouds_last60days.gif', duration = 30, unit = 's', between='startend')
+gif.save(frames, str(savepath) + '/clouds_full.gif', duration = 150, unit = 's', between='startend')
 
 """ CODE BLOCK FOR QBO """
-savepath = '/exports/csce/datastore/geos/users/s1144983/um_data/ch1_control/qbo_gifs/'
 
 for cube in control:
     if cube.standard_name == 'x_wind':
