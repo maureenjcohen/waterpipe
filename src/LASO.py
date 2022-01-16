@@ -19,7 +19,6 @@ from iris.analysis import calculus
 
 
 
-
 brewer_redblu = mpl_cm.get_cmap('RdBu_r')
 reds = mpl_cm.get_cmap('brewer_Reds_09')
 redblu = mpl_cm.get_cmap('brewer_RdBu_11')
@@ -279,7 +278,7 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
         plt.show()
 
     """ Calculate w-prime"""
-
+    
     z_mean = z_wind.collapsed('t', iris.analysis.MEAN)
     z_anomaly = z_wind - z_mean
 
@@ -316,20 +315,21 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
                                 array[:, -2, ...])/(h[:, -1, ...]-h[:, -2, ...])
     acceleration[:, 1:-1, ...] = (array[:, 2:, ...] -
                                   array[:, 0:-2, ...])/(h[:, 2:, ...]-h[:, 0:-2, ...])
+    acceleration = -acceleration
+    # Negative because Plumb 1977 paper formula has a negative, just so you don't forget this and freak out
 
     """ Plot """
     zonal_acc = np.mean(
-        acceleration, axis=3)  # + x_wind[start,:,31:59,long].data
+        acceleration, axis=3)  
     net_acc = np.mean(zonal_acc, axis=0)
 
     x_mean = x_wind.collapsed('longitude', iris.analysis.MEAN)
     x_avg = x_wind.collapsed('t', iris.analysis.MEAN)
     mean_acc = np.mean(acceleration, axis=0)
-    # x_acc = iris.analysis.calculus.differentiate(x_wind,'t')
 
     plt.figure(figsize=(10, 5))
     plt.contourf(np.arange(-longitudes, longitudes), np.array(heights_km),
-                 np.roll(-mean_acc[:, lat, :], 72, axis=1), np.linspace(-8e-05, 8e-05, 20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+                 np.roll(mean_acc[:, lat, :], 72, axis=1), np.linspace(-8e-05, 8e-05, 20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     mbar = plt.colorbar(pad=0.1)
     mbar.locator = ticker.AutoLocator()
     mbar.update_ticks()
@@ -346,19 +346,11 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
     # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/jetexit_%s_ticks_by20s.eps' %(end), format='eps')
     plt.show()
 
-    # plt.figure(figsize=(10,5))
-    # plt.contourf(np.arange(-longitudes,longitudes), np.array(heights), -mean_acc[:,lat,:],  np.linspace(-8e-06,8e-06,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
-    # plt.colorbar(pad=0.1)
-    # plt.title('Wave-Induced Acceleration at Equator [m s-2], t = %s days' %(end/4))
-    # plt.xlabel('Longitude [degrees]')
-    # plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('0','30E','60E','90E','120E','150E','180E/W','150W','120W','90W','60W','30W','0'))
-    # plt.ylabel('Height [m]')
-    # plt.show()
 
     x_axis = x_wind.coord('latitude').points
     y_axis = np.round(x_wind.coord('Hybrid height').points*1e-03, 0)
     plt.figure(figsize=(8, 10))
-    plt.contourf(x_axis, y_axis, -net_acc, brewer_redblu.N,
+    plt.contourf(x_axis, y_axis, net_acc, brewer_redblu.N,
                  cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     wbar = plt.colorbar(pad=0.1)
     wbar.locator = ticker.AutoLocator()
@@ -373,15 +365,26 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
     plt.clabel(CS, inline=False, colors='k', fmt='%1.1f')
     # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/waveinducedacc_%s_ticks.eps' %(end), format='eps')
     plt.show()
+    
+    latmean = np.mean(net_acc[:,40:51], axis=1)
+    latwind = x_mean[:,:,40:51].collapsed(['latitude', 't'], iris.analysis.MEAN)
+    
+    fig, ax1 = plt.subplots()
+    ax1.set_xlabel('Acceleration [m/s$^2$]')
+    ax1.set_ylabel('Height [km]')
+    ax1.plot(latmean, y_axis, color='b', label='Acc')
+    ax1.tick_params(axis='x', labelcolor='b')
+    
+    ax2 = ax1.twiny()
+    ax2.set_xlabel('Zonal mean equatorial wind [m/s]')
+    ax2.plot(latwind.data, y_axis, color='r', label='Wind')
+    ax2.tick_params(axis='x', labelcolor='r')
+    
+    plt.title('Mean Zonal Mean Equatorial Wave-Induced Acceleration, t=%s to %s days' %
+              (start/4, end/4))
+    fig.tight_layout()
+    plt.show()
 
-    # plt.figure(figsize=(10,5))
-    # plt.contourf(np.arange(-longitudes,longitudes), x_axis, np.roll(-mean_acc[hlevel,:,:],72, axis=1), np.linspace(-5e-05,5e-05,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
-    # plt.title('Wave-Induced Acceleration [m s-2] at h=%s m' %(y_axis[hlevel]))
-    # plt.xlabel('Longitude [degrees]')
-    # plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-    # plt.ylabel('Latitude [degrees]')
-    # plt.colorbar(pad=0.1)
-    # plt.show()
 
 
 def deep_convection(cubes, time=39):
