@@ -210,7 +210,9 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
     larger-than-gridbox gravity waves and does not include the acceleration
     from parameterised gravity waves.
     
-    You must use the six-hourly data with this function."""
+    You must use the six-hourly data with this function.
+    
+    Paper plot time spans: 2880-3240 and 3340-3680"""
 
     for cube in cubes:
         if cube.standard_name == 'eastward_wind':
@@ -366,10 +368,11 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
     # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/waveinducedacc_%s_ticks.eps' %(end), format='eps')
     plt.show()
     
-    latmean = np.mean(net_acc[:,40:51], axis=1)
-    latwind = x_mean[:,:,40:51].collapsed(['latitude', 't'], iris.analysis.MEAN)
+    zonal_acc_day = np.mean(zonal_acc[-4:-1,:,:], axis=0)
+    latmean = np.mean(zonal_acc_day[:,40:51], axis=1)
+    latwind = x_mean[-4:-1,:,40:51].collapsed(['latitude', 't'], iris.analysis.MEAN)
     
-    fig, ax1 = plt.subplots()
+    fig, ax1 = plt.subplots(figsize=(8, 10))
     ax1.set_xlabel('Acceleration [m/s$^2$]')
     ax1.set_ylabel('Height [km]')
     ax1.plot(latmean, y_axis, color='b', label='Acc')
