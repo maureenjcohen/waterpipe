@@ -1125,4 +1125,85 @@ def wheeler_kiladis(cubes, omega=0.64617667e-05, radius=7160000, period=(0,160),
     
     return coeffs
 
+
+def bv_frequency(cubes, g=10.9, time_slice=-1, lats=(40,51)):
+
+    for cube in cubes:
+        if cube.standard_name == 'air_potential_temperature':
+            theta = cube[time_slice,:,:,:].copy()
+            
+    y_axis = np.round(theta.coord('level_height').points*1e-03,0)
+    
+    if theta.coord('latitude').bounds == None:
+        theta.coord('latitude').guess_bounds()
+    if theta.coord('longitude').bounds == None:
+        theta.coord('longitude').guess_bounds()
+        
+    day_grid = iris.analysis.cartography.area_weights(theta[:,lats[0]:lats[1],0:37]) 
+    night_grid = iris.analysis.cartography.area_weights(theta[:,lats[0]:lats[1],36:109])
+    full_grid = iris.analysis.cartography.area_weights(theta[:,lats[0]:lats[1],:])  
+    
+    dayside_mean = theta[:,lats[0]:lats[1],0:37].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
+    nightside_mean = theta[:,lats[0]:lats[1],36:109].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)       
+    full_mean = theta[:,lats[0]:lats[1],:].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=full_grid)
+    
+    for option in (dayside_mean, nightside_mean, full_mean):
+    
+        gradient = iris.analysis.calculus.differentiate(option, 'level_height')
+        gradient_data = gradient.data
+        theta_data = option[1:].data
+        N = np.sqrt((g/theta_data)*gradient_data)
+        
+        plt.plot(N,y_axis[1:])
+        plt.title('Vertical profile of buoyancy frequency')
+        plt.xlabel('N')
+        plt.ylabel('Height [km]')
+        plt.show()
+
+        
+def rad_damping(cubes, time_slice=-1, lats=(40,51)):
+    
+    for cube in cubes:
+        if cube.long_name == 'change_over_time_in_air_temperature':
+            delta_K = cube[time_slice,:,:,:].copy()
+        if cube.standard_name == 'tendency_of_air_temperature_due_to_longwave_heating':
+            temp_LW = cube[time_slice,:,:,:].copy()
+        if cube.standard_name == 'tendency_of_air_temperature_due_to_shortwave_heating':
+            temp_SW = cube[time_slice,:,:,:].copy()
+            
+    y_axis = np.round(delta_K.coord('level_height').points*1e-03,0)
+    
+    if delta_K.coord('latitude').bounds == None:
+        delta_K.coord('latitude').guess_bounds()
+    if delta_K.coord('longitude').bounds == None:
+        delta_K.coord('longitude').guess_bounds()
+        
+    day_grid = iris.analysis.cartography.area_weights(delta_K[:,lats[0]:lats[1],0:37]) 
+    night_grid = iris.analysis.cartography.area_weights(delta_K[:,lats[0]:lats[1],36:109])
+    full_grid = iris.analysis.cartography.area_weights(delta_K[:,lats[0]:lats[1],:]) 
+    
+    dayside_delta = delta_K[:,lats[0]:lats[1],0:37].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
+    nightside_delta = delta_K[:,lats[0]:lats[1],36:109].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)       
+    full_delta = delta_K[:,lats[0]:lats[1],:].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=full_grid)
+    
+    dayside_LW = temp_LW[:,lats[0]:lats[1],0:37].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
+    nightside_LW = temp_LW[:,lats[0]:lats[1],36:109].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)       
+    full_LW = temp_LW[:,lats[0]:lats[1],:].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=full_grid)
+
+    dayside_SW = temp_SW[:,lats[0]:lats[1],0:37].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
+    nightside_SW = temp_SW[:,lats[0]:lats[1],36:109].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)       
+    full_SW = temp_SW[:,lats[0]:lats[1],:].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=full_grid)
+    
+    dayside_rate = (dayside_LW.data + dayside_SW.data)/(dayside_delta.data)
+    nightside_rate = (nightside_LW.data + nightside_SW.data)/(nightside_delta.data)
+    full_rate = (full_LW.data + full_SW.data)/(full_delta.data)
+    
+    for option in (dayside_rate, nightside_rate, full_rate):
+        
+        plt.plot(option[:-5], y_axis[:-5])
+        plt.title('Vertical profile of radiative damping rate')
+        plt.xlabel('day-1')
+        plt.ylabel('Height [km]')
+        plt.show()
+            
     
