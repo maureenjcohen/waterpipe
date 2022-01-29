@@ -1195,8 +1195,12 @@ def rad_damping(cubes, time_slice=-1, lats=(40,51)):
     full_SW = temp_SW[:,lats[0]:lats[1],:].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=full_grid)
     
     dayside_rate = (dayside_LW.data + dayside_SW.data)/(dayside_delta.data)
-    nightside_rate = (nightside_LW.data + nightside_SW.data)/(nightside_delta.data)
-    full_rate = (full_LW.data + full_SW.data)/(full_delta.data)
+    nightside_rate = (nightside_LW.data)/(nightside_delta.data)
+    full_rate = (full_LW.data)/(full_delta.data)
+    
+    night_mean = np.mean(nightside_rate)
+    print(night_mean)
+    
     
     for option in (dayside_rate, nightside_rate, full_rate):
         

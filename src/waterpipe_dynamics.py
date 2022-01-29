@@ -20,6 +20,8 @@ import numpy as np
 import scipy as sp
 import windspharm
 from matplotlib.colors import TwoSlopeNorm
+from iris.analysis import calculus
+
 
 # Import packages
 
@@ -83,7 +85,16 @@ def plot_zonal_wind(cubes, time_slice=-1):
     plt.clabel(CS_night, inline=False, colors='k', fmt='%1.1f')
     plt.colorbar(pad=0.1)
     plt.show()
-
+    
+    gradient = iris.analysis.calculus.differentiate(dayside_zonal_mean[time_slice,:,45], 'level_height')
+    iplt.plot(gradient*1000)
+    plt.title('Vertical Wind Shear of Zonal Mean Zonal Wind at Equator')
+    plt.xlabel('Wind shear [m s-1 km-1]')
+    plt.ylabel('Height [m]')
+    plt.show()
+    
+    mean_grad = np.mean(np.abs(gradient[40:54].data)*1000)
+    print(mean_grad)
     
 def plot_zonal_line(cubes):
     

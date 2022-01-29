@@ -226,6 +226,7 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
     z_wind = z_wind.interpolate(vertical, iris.analysis.Linear())
 
     longitudes = x_wind.shape[3]/2
+    latitudes = x_wind.shape[2]/2
     heights = x_wind.coord('Hybrid height').points
     heights_km = np.round(x_wind.coord('Hybrid height').points*1e-03, 0)
 
@@ -262,22 +263,56 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
     print(u_prime.shape)
 
     if plot == True:
+        
+        zonal_mean = x_wind.collapsed('longitude', iris.analysis.MEAN)
 
-        plt.figure(figsize=(10, 5))
-        plt.contourf(np.arange(-longitudes, longitudes), np.array(heights_km), np.roll(
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16,8), gridspec_kw={'width_ratios': [4,1]}, sharey=True)
+        up = ax1.contourf(np.arange(-longitudes, longitudes), np.array(heights_km), np.roll(
             u_prime[-1, :, lat, :], 72, axis=1), np.linspace(-35, 35, 70), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
-        plt.title('$U^{\prime}$ at Equator, t=%s days' % (end/4))
-        plt.xlabel('Longitude [degrees]')
-        plt.xticks((-72, -60, -48, -36, -24, -12, 0, 12, 24, 36, 48, 60, 72), ('180W', '150W',
-                   '120W', '90W', '60W', '30W', '0', '30E', '60E', '90E', '120E', '150E', '180E'))
-        plt.ylabel('Height [km]')
-        cbar = plt.colorbar(pad=0.1)
+        ax1.set_title('$U^{\prime}$ at Equator, t=%s days' % (end/4))
+        ax1.set_xlabel('Longitude [degrees]')
+        ax1.set_xticks((-72, -48, -24, 0, 24, 48, 72), ('180W',
+                   '120W', '60W', '0', '60E', '120E', '180E'))
+        ax1.set_ylabel('Height [km]')
+        # ax1.annotate('', xy=(0.177, 0.55), xytext=(0.11, 0.55), xycoords='figure fraction', arrowprops=dict(facecolor='black',shrink=0.005),
+        #              horizontalalignment='left', verticalalignment='top')
+        cbar = plt.colorbar(up, pad=0.05, ax=ax1)
         cbar.locator = ticker.AutoLocator()
         cbar.update_ticks()
         cbar.ax.set_title('m/s')
+        
+        # plt.figure(figsize=(10, 5))
+        # plt.contourf(np.arange(-longitudes, longitudes), np.array(heights_km), np.roll(
+        #     u_prime[-1, :, lat, :], 72, axis=1), np.linspace(-35, 35, 70), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+        # plt.title('$U^{\prime}$ at Equator, t=%s days' % (end/4))
+        # plt.xlabel('Longitude [degrees]')
+        # plt.xticks((-72, -60, -48, -36, -24, -12, 0, 12, 24, 36, 48, 60, 72), ('180W', '150W',
+        #            '120W', '90W', '60W', '30W', '0', '30E', '60E', '90E', '120E', '150E', '180E'))
+        # plt.ylabel('Height [km]')
+        # cbar = plt.colorbar(pad=0.1)
+        # cbar.locator = ticker.AutoLocator()
+        # cbar.update_ticks()
+        # cbar.ax.set_title('m/s')
+
+        # # plt.savefig(
+        #     # '/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/uprime_%s_ticks.eps' % (end), format='eps')
+        # plt.show()
+        
+        
+        # plt.figure(figsize=(2.5, 5))
+        zmzw = ax2.contour(np.arange(-latitudes,latitudes)*2, np.array(heights_km), zonal_mean[-1,:,:].data, np.arange(-80, 81, 20), colors='black', linewidths=2.0)
+        ax2.set_title('Zonal Mean Zonal Wind, t=%s days' % (end/4))
+        ax2.set_xlabel('Latitude [degrees]')
+        # ax2.set_ylabel('Height [km]')
+        ax2.clabel(zmzw, inline=False, colors='k', fmt='%1.1f')
+        fig.tight_layout()
+        # fig.suptitle('$U^{\prime}$ at Equator and Zonal Mean Zonal Wind, t=%s days' %(end/4), fontsize=18)
+    
         # plt.savefig(
-            # '/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/uprime_%s_ticks.eps' % (end), format='eps')
+            # '/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/uprime_subplots_%s_right.eps' % (end), format='eps')
+
         plt.show()
+        
 
     """ Calculate w-prime"""
     
@@ -385,7 +420,7 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
     
     plt.title('Mean Zonal Mean Equatorial Wave-Induced Acceleration, t=%s to %s days' %
               (start/4, end/4))
-    fig.tight_layout()
+    # fig.tight_layout()
     plt.show()
 
 
@@ -609,3 +644,49 @@ def wavelets(cubes, radius=7160000, scales=512, wavelet='mexh', x=(106, 110), y=
     plt.xlabel('Time [days]')
     plt.ylabel('Period [days]')
     plt.show()
+    
+def vapour_series(cubes, radius=7160000, level=47, x=(106,110), y=(43,47)):
+    
+    for cube in cubes:
+        if cube.standard_name == 'specific_humidity':
+            vapour = cube.copy()
+            
+    vapour.coord('latitude').coord_system = GeogCS(radius)
+    vapour.coord('longitude').coord_system = GeogCS(radius)
+    # Sets planet radius in m for area-weighted average. Default is radius of Proxima Centauri b
+    
+    run_length, height = vapour.shape[0], vapour.shape[1]
+    # Gives time in (Earth) days if the sampling rate is in samples per day
+    heights = np.round(vapour.coord('level_height').points*1e-03,0)
+    lats, lat_points = vapour.coord('latitude'), vapour.coord('latitude').points
+    longs, long_points = vapour.coord('longitude'), vapour.coord('longitude').points
+    
+    if lats.bounds == None:
+        vapour.coord('latitude').guess_bounds()
+    if longs.bounds == None:
+        vapour.coord('longitude').guess_bounds()       
+    # Set grid box bounds if there are none
+        
+    patch = vapour[:,level,y[0]:y[1],x[0]:x[1]].copy()    
+    patch_grid = iris.analysis.cartography.area_weights(patch)
+    patch_mean = patch.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=patch_grid)
+    data = patch_mean.data/1e-09
+    
+    lat_index, long_index = int((y[0]+y[1])/2), int((x[0]+x[1])/2)
+    
+    avg = np.mean(data)
+    smallest = np.min(data)
+    biggest = np.max(data)
+    print('The average specific humidity is %s kg/kg' %avg)
+    print('The min and max are %s and %s' %(smallest, biggest))
+
+    plt.figure(figsize=(10,5))   
+    plt.plot(np.arange(0,run_length)*0.25, data, linestyle='-', color='b')
+    plt.title('Specific Humidity at Western Terminator, h=%s km' %(heights[level]))    
+    # plt.title('Specific humidity at lat=%s, long=%s, h=%s km' %(lat_points[lat_index], long_points[long_index], heights[level]))
+    plt.xlabel('Time [days]') 
+    plt.ylabel('Water vapour [$10^{-9}$ kg/kg]')
+    # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/vapour_qbo.eps', format='eps')
+
+    plt.show()
+    

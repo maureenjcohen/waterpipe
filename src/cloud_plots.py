@@ -149,7 +149,8 @@ def cloud_lats(cubes, time_slice=-1, long=0):
         plt.show()
         
     
-def cloud_type(cubes, time_slice=-1, long1=36, long2=108):
+def cloud_type(cubes, time_slice=-1, long1=36, long2=108, filtering=True, 
+               ice_threshold = 0.02, liq_threshold = 0.02):
     
     for cube in cubes:
 
@@ -205,6 +206,21 @@ def cloud_type(cubes, time_slice=-1, long1=36, long2=108):
     liq_east = np.mean(liquid_condensate[:,:,:,long1], axis=(1,2))
     liq_west = np.mean(liquid_condensate[:,:,:,long2], axis=(1,2))
     total_liq = (liq_east + liq_west)/2
+    
+    if filtering == True:
+        fft_ice = sp.fftpack.fft(total_ice)
+        psd_ice = np.abs(fft_ice)**2
+        freqs_ice = sp.fftpack.fftfreq(len(psd_ice), 1./1)
+        lowpass_ice = fft_ice.copy()
+        lowpass_ice[np.abs(freqs_ice) > ice_threshold] = 0
+        total_ice = np.real(sp.fftpack.ifft(lowpass_ice))
+        
+        fft_liq = sp.fftpack.fft(total_liq)
+        psd_liq = np.abs(fft_liq)**2
+        freqs_liq = sp.fftpack.fftfreq(len(psd_liq), 1./1)
+        lowpass_liq = fft_liq.copy()
+        lowpass_liq[np.abs(freqs_liq) > liq_threshold] = 0
+        total_liq = np.real(sp.fftpack.ifft(lowpass_liq))
     
     fig, ax1 = plt.subplots()
     ax1.set_xlabel('Time [days]')
@@ -368,3 +384,47 @@ def plot_energy(cubes, lats=(30,61), longs=(0,13)):
         plt.title('mean %s' %cube.standard_name)
         plt.xlabel('Time [days]')
         plt.show()
+        
+def composites2D(cubes, start=0, end=10, level=25, n=3, meaning=7):
+    
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube.copy()
+        if cube.standard_name == 'y_wind':
+            y_wind = cube.copy()
+        if cube.long_name == 'cloud_area_fraction_assuming_maximum_random_overlap':
+            cloud_cover = cube.copy()
+
+    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())            
+    meaned_x = np.mean(x_wind.data.reshape(-1,meaning,60,90,144),axis=1)
+    meaned_y = np.mean(y_wind.data.reshape(-1,meaning,60,90,144),axis=1)
+    meaned_cloud = np.mean(cloud_cover.data.reshape(-1,meaning,90,144), axis=1)
+    
+    # X,Y = np.meshgrid(np.arange(-meaned_x.shape[3]/2,meaned_x.shape[3]/2), np.arange(-meaned_x.shape[2]/2,meaned_x.shape[2]/2))
+    X,Y = np.meshgrid(np.arange(0,144), np.arange(0,90))
+
+    
+    for time_slice in range(start, end+1):
+        
+        fig, ax = plt.subplots(figsize=(10,5))
+        plt.imshow(np.roll(meaned_cloud[time_slice,:,:],72,axis=1), cmap=brewer_bg)
+        plt.colorbar()
+    
+        
+        plt.quiver(X[::n,::n],Y[::n,::n], np.roll(meaned_x[time_slice,level,::n,::n],72,axis=1), 
+                    np.roll(-meaned_y[time_slice, level,::n,::n],72,axis=1),scale_units='xy',scale=5)
+
+        plt.title('Cloud cover and horizontal wind at fortnight %s' %(time_slice+1))
+        # plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+        # plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))         
+        # plt.xlabel('Longitude')
+        # plt.ylabel('Latitude')
+        
+        # ax2.quiverkey(q1, X=0.9, Y=1.05, U=10, label='10 m/s', labelpos='E', coordinates='axes')
+
+    
+        plt.show()
+        
+        
+       
+            
