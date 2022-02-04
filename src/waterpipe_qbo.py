@@ -1161,15 +1161,15 @@ def bv_frequency(cubes, g=10.9, time_slice=-1, lats=(40,51)):
         plt.show()
 
         
-def rad_damping(cubes, time_slice=-1, lats=(40,51)):
+def rad_damping(cubes, time_slice=-1, level=47, lats=(40,51)):
     
     for cube in cubes:
         if cube.long_name == 'change_over_time_in_air_temperature':
-            delta_K = cube[time_slice,:,:,:].copy()
+            delta_K = cube.copy()
         if cube.standard_name == 'tendency_of_air_temperature_due_to_longwave_heating':
-            temp_LW = cube[time_slice,:,:,:].copy()
+            temp_LW = cube.copy()
         if cube.standard_name == 'tendency_of_air_temperature_due_to_shortwave_heating':
-            temp_SW = cube[time_slice,:,:,:].copy()
+            temp_SW = cube.copy()
             
     y_axis = np.round(delta_K.coord('level_height').points*1e-03,0)
     
@@ -1178,36 +1178,81 @@ def rad_damping(cubes, time_slice=-1, lats=(40,51)):
     if delta_K.coord('longitude').bounds == None:
         delta_K.coord('longitude').guess_bounds()
         
-    day_grid = iris.analysis.cartography.area_weights(delta_K[:,lats[0]:lats[1],0:37]) 
-    night_grid = iris.analysis.cartography.area_weights(delta_K[:,lats[0]:lats[1],36:109])
-    full_grid = iris.analysis.cartography.area_weights(delta_K[:,lats[0]:lats[1],:]) 
+    iplt.contourf(temp_LW[time_slice,level,:,:], cmap=brewer_bg)
+    ax = plt.gca()
+    ax.gridlines(draw_labels=True)
+    plt.title('Change due to LW')
+    plt.colorbar()
+    plt.show()
     
-    dayside_delta = delta_K[:,lats[0]:lats[1],0:37].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
-    nightside_delta = delta_K[:,lats[0]:lats[1],36:109].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)       
-    full_delta = delta_K[:,lats[0]:lats[1],:].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=full_grid)
+    iplt.contourf(temp_SW[time_slice,level,:,:], cmap=brewer_redblu)
+    ax = plt.gca()
+    ax.gridlines(draw_labels=True)
+    plt.title('Change due to SW')
+    plt.colorbar()
+    plt.show()
     
-    dayside_LW = temp_LW[:,lats[0]:lats[1],0:37].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
-    nightside_LW = temp_LW[:,lats[0]:lats[1],36:109].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)       
-    full_LW = temp_LW[:,lats[0]:lats[1],:].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=full_grid)
+    iplt.contourf(delta_K[time_slice,level,:,:], cmap=brewer_redblu)
+    ax = plt.gca()
+    ax.gridlines(draw_labels=True)
+    plt.title('Change in air temp')
+    plt.colorbar()
+    plt.show()
+        
+    day_grid = iris.analysis.cartography.area_weights(delta_K[time_slice,:,lats[0]:lats[1],0:37]) 
+    night_grid = iris.analysis.cartography.area_weights(delta_K[time_slice,:,lats[0]:lats[1],36:109])
+    full_grid = iris.analysis.cartography.area_weights(delta_K[time_slice,:,lats[0]:lats[1],:]) 
+    
+    dayside_delta = delta_K[time_slice,:,lats[0]:lats[1],0:37].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
+    nightside_delta = delta_K[time_slice,:,lats[0]:lats[1],36:109].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)       
+    full_delta = delta_K[time_slice,:,lats[0]:lats[1],:].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=full_grid)
+    
+    dayside_LW = temp_LW[time_slice,:,lats[0]:lats[1],0:37].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
+    nightside_LW = temp_LW[time_slice,:,lats[0]:lats[1],36:109].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)       
+    full_LW = temp_LW[time_slice,:,lats[0]:lats[1],:].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=full_grid)
 
-    dayside_SW = temp_SW[:,lats[0]:lats[1],0:37].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
-    nightside_SW = temp_SW[:,lats[0]:lats[1],36:109].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)       
-    full_SW = temp_SW[:,lats[0]:lats[1],:].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=full_grid)
+    dayside_SW = temp_SW[time_slice,:,lats[0]:lats[1],0:37].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
+    nightside_SW = temp_SW[time_slice,:,lats[0]:lats[1],36:109].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)       
+    full_SW = temp_SW[time_slice,:,lats[0]:lats[1],:].collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=full_grid)
     
     dayside_rate = (dayside_LW.data + dayside_SW.data)/(dayside_delta.data)
-    nightside_rate = (nightside_LW.data)/(nightside_delta.data)
-    full_rate = (full_LW.data)/(full_delta.data)
+    nightside_rate = (nightside_LW.data + nightside_LW.data)/(nightside_delta.data)
+    full_rate = (full_LW.data + full_SW.data)/(full_delta.data)
     
     night_mean = np.mean(nightside_rate)
-    print(night_mean)
+    day_mean = np.mean(dayside_rate)
+    full_mean = np.mean(full_rate)
+    print(night_mean, day_mean, full_mean)
     
     
-    for option in (dayside_rate, nightside_rate, full_rate):
+    # for option in (dayside_rate, nightside_rate, full_rate):
         
-        plt.plot(option[:-5], y_axis[:-5])
-        plt.title('Vertical profile of radiative damping rate')
-        plt.xlabel('day-1')
-        plt.ylabel('Height [km]')
-        plt.show()
+    #     plt.plot(option[:-5], y_axis[:-5])
+    #     plt.title('Vertical profile of radiative damping rate')
+    #     plt.xlabel('day-1')
+    #     plt.ylabel('Height [km]')
+    #     plt.show()
+    
+def optical_depth(cubes, time_slice=-1,lat=45, lon=72):
+    
+    for cube in cubes:
+        if cube.standard_name =='upwelling_longwave_flux_in_air':
+            bottom = cube[time_slice,:,:]
+        if cube.standard_name == 'toa_outgoing_longwave_flux':
+            top = cube[time_slice,:,:]
+            
+    if bottom.coord('latitude').bounds == None:
+        bottom.coord('latitude').guess_bounds()
+    if bottom.coord('longitude').bounds == None:
+        bottom.coord('longitude').guess_bounds()
+            
+    grid = iris.analysis.cartography.area_weights(bottom) 
+    
+    mean_bottom = bottom.collapsed(['latitude','longitude'], iris.analysis.MEAN, weights=grid)
+    mean_top = top.collapsed(['latitude','longitude'], iris.analysis.MEAN, weights=grid)
+
+    tau = np.log(mean_bottom.data/mean_top.data)
+    
+    print(tau)
             
     

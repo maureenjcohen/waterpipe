@@ -133,7 +133,7 @@ def ep_flux(cubes, omega=0.64617667e-05, long_slice=(0,-1), time_slice=1780):
     x_axis = pressure.coord('latitude').points
     # y_axis = pressure_zonal_mean
     y_axis = pressure.coord('Hybrid height').points
-    plt.contourf(x_axis, y_axis[35:59], EP_div[35:59,:], brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.contourf(x_axis, y_axis[35:59], EP_div[35:59,:], np.arange(-450,451,50), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.colorbar(pad=0.1)
     CS = plt.contour(x_axis, y_axis[35:59], x_mean[35:59,:].data, colors='black', linewidths=0.5)
     plt.title('EP flux divergence for day=%s, long=%s to %s' %(time_slice/4, longitudes[0], longitudes[-1]))

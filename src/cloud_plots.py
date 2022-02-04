@@ -426,5 +426,97 @@ def composites2D(cubes, start=0, end=10, level=25, n=3, meaning=7):
         plt.show()
         
         
-       
+def composites_levels(cubes, start=1, end=10, level=25, meaning=15, n=3, cloudtype='ice', fractype='volume'):
+
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube.copy()
+        if cube.standard_name == 'y_wind':
+            y_wind = cube.copy() 
+        if cube.long_name == 'ice_cloud_volume_fraction_in_atmosphere_layer' and fractype=='volume':
+            ice = cube.copy()
+        if cube.long_name == 'liquid_cloud_volume_fraction_in_atmosphere_layer' and fractype=='volume':
+            liq = cube.copy()
+        if cube.standard_name == 'mass_fraction_of_cloud_ice_in_air' and fractype=='mass':
+            ice = cube.copy()
+        if cube.standard_name == 'mass_fraction_of_cloud_liquid_water_in_air' and fractype=='mass':
+            liq = cube.copy()
             
+        
+    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+    heights = np.round(x_wind.coord('level_height').points*1e-03,2)
+            
+    meaned_x = np.mean(x_wind.data.reshape(-1,meaning,60,90,144),axis=1)
+    meaned_y = np.mean(y_wind.data.reshape(-1,meaning,60,90,144),axis=1)
+    
+    if cloudtype=='ice':
+        meaned_cloud = np.mean(ice.data.reshape(-1,meaning,61,90,144), axis=1)
+        titleterm = 'Ice cloud'
+    elif cloudtype=='liq':
+        meaned_cloud = np.mean(liq.data.reshape(-1,meaning,61,90,144), axis=1)
+        titleterm = 'Liquid cloud'
+    else:
+        print('Argument cloudtype must be ice or liq. Default is ice.')
+
+    X,Y = np.meshgrid(np.arange(0,144), np.arange(0,90))   
+
+    for time_slice in range(start, end+1):
+        
+        fig, ax = plt.subplots(figsize=(10,5))
+        plt.imshow(np.roll(meaned_cloud[time_slice,level, :,:],72,axis=1), cmap=brewer_bg)
+        cbar = plt.colorbar()
+        
+        if fractype=='mass':
+            cbar.set_label('kg/kg', labelpad=-20, y=0.45)
+    
+        
+        plt.quiver(X[::n,::n],Y[::n,::n], np.roll(meaned_x[time_slice,level,::n,::n],72,axis=1), 
+                    np.roll(-meaned_y[time_slice, level,::n,::n],72,axis=1),scale_units='xy',scale=5)
+
+        plt.title('%s and horizontal wind, days %s to %s, h=%s km' %(titleterm, time_slice*meaning-meaning,time_slice*meaning, heights[level]))
+        plt.xticks((0,12,24,36,48,60,72,84,96,108,120,132,144),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+        plt.yticks((90,75,60,45,30,15,0),('90S','60S','30S','0','30N','60N','90N'))         
+        plt.xlabel('Longitude')
+        plt.ylabel('Latitude')
+        
+        # ax2.quiverkey(q1, X=0.9, Y=1.05, U=10, label='10 m/s', labelpos='E', coordinates='axes')
+    
+        plt.show()
+        
+
+def cloud_profile(cubes, time_slice=340, lon=36, cloudtype='ice', fractype='volume'):
+    
+    for cube in cubes:
+        if cube.long_name == 'ice_cloud_volume_fraction_in_atmosphere_layer' and fractype=='volume':
+            ice = cube[time_slice,:,:,lon].copy()
+        if cube.long_name == 'liquid_cloud_volume_fraction_in_atmosphere_layer' and fractype=='volume':
+            liq = cube[time_slice,:,:,lon].copy()
+        if cube.standard_name == 'mass_fraction_of_cloud_ice_in_air' and fractype=='mass':
+            ice = cube[time_slice,:,:,lon].copy()
+        if cube.standard_name == 'mass_fraction_of_cloud_liquid_water_in_air' and fractype=='mass':
+            liq = cube[time_slice,:,:,lon].copy()
+                            
+    heights = np.round(ice.coord('level_height').points*1e-03,0)
+    lats = ice.coord('latitude').points
+    
+    if cloudtype=='ice':
+        cloud = ice.data
+        titleterm = 'Ice cloud'
+    elif cloudtype=='liq':
+        cloud = liq.data
+        titleterm = 'Liquid cloud'
+    else:
+        print('Argument cloudtype must be ice or liq. Default is ice.')
+    
+    fig, ax = plt.subplots(figsize=(10,5))
+    plt.contourf(lats, heights, cloud, cmap=brewer_bg)
+    cbar = plt.colorbar()
+    
+    # if fractype=='mass':
+    #     cbar.ax.set_title('kg/kg')
+    
+    plt.title('%s at lon %s, day %s' %(titleterm, lon*2.5, time_slice))
+    plt.ylabel('Height [km]')
+    plt.xlabel('Latitude [degrees]')
+    plt.show()
+    
