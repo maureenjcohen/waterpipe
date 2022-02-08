@@ -42,7 +42,7 @@ def get_heights(cubes):
     return heights
 
 
-def plot_hovmoellerx(cubes, radius=7160000, time='days'):
+def plot_hovmoellerx(cubes, radius=7160000, level=47, time='days', sampling=0.25):
     
     """ Plot Hovmoeller diagrams of zonal wind 
         Arguments: CubeList, time (can be '6-hours' or 'days')
@@ -84,14 +84,14 @@ def plot_hovmoellerx(cubes, radius=7160000, time='days'):
             side = 'Dayside'
         else:
             side = 'Nightside'
-        plt.contourf(np.arange(0,run_length)*0.25, np.array(heights), cube.data.T, levels=np.arange(-120,121,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+        plt.contourf(np.arange(0,run_length)*sampling, np.array(heights), cube.data.T, levels=np.arange(-120,121,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
         plt.title('%s Mean Zonal Equatorial Wind' %(side))
         plt.xlabel('Time [%s]' %(time))
         plt.ylabel('Height [km]')
         cbar = plt.colorbar(pad=0.1)
         cbar.set_ticks(np.arange(-120,121,20))
         cbar.ax.set_title('m/s')
-        # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/hovmoeller_%s_new.eps' %(side), format='eps')   
+        # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/hovmoeller_%s_doubleres.eps' %(side), format='eps')   
         plt.show()
     
     for cube in (dayside_zonal_mean, nightside_zonal_mean):
@@ -99,11 +99,11 @@ def plot_hovmoellerx(cubes, radius=7160000, time='days'):
             side = 'Dayside'
         else:
             side = 'Nightside'  
-        plt.contourf(np.arange(0,run_length)*0.25, np.arange(-45,45), cube[:,47,:].data.T, np.arange(-120,121,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+        plt.contourf(np.arange(0,run_length)*sampling, np.arange(-45,45), cube[:,level,:].data.T, np.arange(-120,121,20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
         plt.title('%s Mean Zonal Wind at 41 km' %(side))
         plt.xlabel('Time [%s]' %(time))
         plt.ylabel('Latitude')
-        plt.yticks((-45,0,45),('90S', '0', '90N'))
+        plt.yticks((-45,0,45),('45S', '0', '45N'))
         mbar = plt.colorbar(pad=0.1)
         mbar.set_ticks(np.arange(-120,121,20))
         mbar.ax.set_title('m/s')
@@ -544,18 +544,18 @@ def wave_acceleration(cubes, time_slice=2000):
     plt.show()  
     
 
-def equatorial_wind(cubes, time_slice=1780, low=47, high=53, bandpass=False):
+def equatorial_wind(cubes, time_slice=1780, low=47, high=53, lat=45, bandpass=False):
     
     for cube in cubes:
-        if cube.standard_name == 'eastward_wind':
+        if cube.standard_name == 'eastward_wind' or cube.standard_name == 'x_wind':
             x_wind = cube.copy()
     
 #    acceleration = iris.analysis.calculus.differentiate(x_wind, 'longitude')
     longitudes = x_wind.shape[3]/2     
     heights = np.round(x_wind.coord('Hybrid height').points*1e-03,0)
-    trop = np.roll(x_wind[time_slice,37,45,:].data, 72)
-    westerly = np.roll(x_wind[time_slice,low,45,:].data, 72)
-    easterly = np.roll(x_wind[time_slice,high,45,:].data, 72)
+    trop = np.roll(x_wind[time_slice,37,lat,:].data, 72)
+    westerly = np.roll(x_wind[time_slice,low,lat,:].data, 72)
+    easterly = np.roll(x_wind[time_slice,high,lat,:].data, 72)
     # westerly_acc = np.roll(acceleration[time_slice,low,45,:].data, 72)
     # easterly_acc = np.roll(acceleration[time_slice,high,45,:].data, 72)
     
@@ -563,6 +563,8 @@ def equatorial_wind(cubes, time_slice=1780, low=47, high=53, bandpass=False):
     plt.plot(np.arange(-longitudes, longitudes), trop)
     plt.title('Tropospheric Zonal Jet at Equator, t=%s months, h=%s km' %(time_slice+1, heights[37]))
     plt.xlabel('Longitude [degrees]')
+    # plt.xticks((-144, -120, -96, -72, -48, -24, 0, 24, 48, 72, 96, 120, 144), ('180W', '150W',
+    #             '120W', '90W', '60W', '30W', '0', '30E', '60E', '90E', '120E', '150E', '180E'))
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.axvline(x=-36, color='r', linestyle='--')
     plt.axvline(x=36, color='r', linestyle='--')
@@ -573,6 +575,8 @@ def equatorial_wind(cubes, time_slice=1780, low=47, high=53, bandpass=False):
     plt.plot(np.arange(-longitudes, longitudes), westerly)
     plt.title('Zonal Wind at Equator, t=%s days, h=%s km' %(time_slice+1, heights[low]))
     plt.xlabel('Longitude [degrees]')
+    # plt.xticks((-144, -120, -96, -72, -48, -24, 0, 24, 48, 72, 96, 120, 144), ('180W', '150W',
+    #             '120W', '90W', '60W', '30W', '0', '30E', '60E', '90E', '120E', '150E', '180E'))
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.axvline(x=-36, color='r', linestyle='--')
     plt.axvline(x=36, color='r', linestyle='--')
@@ -583,6 +587,8 @@ def equatorial_wind(cubes, time_slice=1780, low=47, high=53, bandpass=False):
     plt.plot(np.arange(-longitudes, longitudes), easterly)
 #    plt.plot(np.arange(-longitudes, longitudes), np.zeros_like(easterly), color='g', linestyle='--')
     plt.title('Zonal Wind at Equator, t=%s days, h=%s km' %(time_slice+1, heights[high]))
+    # plt.xticks((-144, -120, -96, -72, -48, -24, 0, 24, 48, 72, 96, 120, 144), ('180W', '150W',
+    #             '120W', '90W', '60W', '30W', '0', '30E', '60E', '90E', '120E', '150E', '180E'))
     plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
     plt.axvline(x=-36, color='r', linestyle='--')
     plt.axvline(x=36, color='r', linestyle='--')    
@@ -1235,6 +1241,14 @@ def rad_damping(cubes, time_slice=-1, level=47, lats=(40,51)):
     
 def optical_depth(cubes, time_slice=-1,lat=45, lon=72):
     
+    """ Used in the following formula for the radiative timescale:
+        
+        tau = optical depth (cp * ps / 4g sigma T^3)
+        
+        where cp is the heat capacity of air, ps is the surface pressure,
+        g is gravity, sigma is the Stefan-Boltzmann constant, and T is the 
+        equilibrium temperature """
+    
     for cube in cubes:
         if cube.standard_name =='upwelling_longwave_flux_in_air':
             bottom = cube[time_slice,:,:]
@@ -1254,5 +1268,21 @@ def optical_depth(cubes, time_slice=-1,lat=45, lon=72):
     tau = np.log(mean_bottom.data/mean_top.data)
     
     print(tau)
+    
+    
+def asymmetry(cubes, level=47, lat=45, time_unit='days'):
+            
+    for cube in cubes:
+        if cube.standard_name == 'eastward_wind' or cube.standard_name == 'x_wind':
+            x_wind = cube.copy()
+    
+    data = x_wind.data
+    max_wind = np.max(data[:,level,lat,:], axis=1)
+    min_wind = np.min(data[:,level,lat,:], axis=1)
+    mean_difference = np.mean(max_wind - min_wind)
+    
+    
+
+    print(mean_difference)
             
     

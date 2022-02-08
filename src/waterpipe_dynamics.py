@@ -38,21 +38,21 @@ def plot_zonal_wind(cubes, time_slice=-1):
         Plots dayside, nightside, and global zonal mean winds     """
         
     for cube in cubes:
-        if cube.standard_name == 'x_wind':
+        if cube.standard_name == 'x_wind' or cube.standard_name =='eastward_wind':
             x_wind = cube.copy()
     
     dayside = x_wind.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -90 <= v <= 90))
     nightside = x_wind.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
 
     x_end = x_wind[-4:,:,:,:]
-    x_mean = x_end.collapsed('time',iris.analysis.MEAN)
+    x_mean = x_end.collapsed('t',iris.analysis.MEAN)
     
     dayside_zonal_mean = dayside.collapsed('longitude', iris.analysis.MEAN)
     nightside_zonal_mean = nightside.collapsed('longitude', iris.analysis.MEAN)    
     dayside_zonal_end = dayside_zonal_mean[-4:,:,:]
     nightside_zonal_end = nightside_zonal_mean[-4:,:,:]
-    dayside_zonal_time = dayside_zonal_end.collapsed('time', iris.analysis.MEAN)
-    nightside_zonal_time = nightside_zonal_end.collapsed('time', iris.analysis.MEAN)
+    dayside_zonal_time = dayside_zonal_end.collapsed('t', iris.analysis.MEAN)
+    nightside_zonal_time = nightside_zonal_end.collapsed('t', iris.analysis.MEAN)
     
     CS_day = iplt.contourf(dayside_zonal_mean[time_slice,:,:], levels=brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Dayside Zonal Mean Zonal Wind [m s-1]', y=1.05)
@@ -86,7 +86,7 @@ def plot_zonal_wind(cubes, time_slice=-1):
     plt.colorbar(pad=0.1)
     plt.show()
     
-    gradient = iris.analysis.calculus.differentiate(dayside_zonal_mean[time_slice,:,45], 'level_height')
+    gradient = iris.analysis.calculus.differentiate(dayside_zonal_mean[time_slice,:,45], 'Hybrid height')
     iplt.plot(gradient*1000)
     plt.title('Vertical Wind Shear of Zonal Mean Zonal Wind at Equator')
     plt.xlabel('Wind shear [m s-1 km-1]')

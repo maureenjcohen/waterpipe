@@ -165,19 +165,21 @@ def plot_temp_anomaly(cubes, period=(0, 220), lat=45, level=47):
     # R and cp in J/kgK for 300K
     temperature = theta*((pressure/p0)**(287.05/1005))
 
-    temp_time_mean = temperature.collapsed('t', iris.analysis.MEAN)
+    temp_time_mean = temperature.collapsed('time', iris.analysis.MEAN)
     anomaly = temperature - temp_time_mean
 
     plt.figure(figsize=(10, 5))
-    plt.contourf(np.arange(-longitudes, longitudes), np.arange(period[0], period[1])*0.25, np.roll(
-        anomaly[:, level, :].data, 72, axis=1), np.arange(-40, 41, 5), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.contourf(np.arange(-longitudes, longitudes), np.arange(period[0], period[1]), np.roll(
+        anomaly[:, level, :].data, 72, axis=1), np.arange(-20, 21, 5), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Temperature Anomaly at Equator, h=%s km' % (heights[level]))
     plt.xlabel('Longitude [degrees]')
-    plt.xticks((-72, -60, -48, -36, -24, -12, 0, 12, 24, 36, 48, 60, 72), ('180W', '150W',
-               '120W', '90W', '60W', '30W', '0', '30E', '60E', '90E', '120E', '150E', '180E'))
-    plt.ylabel('Time [days]')
+    plt.xticks((-144, -120, -96, -72, -48, -24, 0, 24, 48, 72, 96, 120, 144), ('180W', '150W',
+                '120W', '90W', '60W', '30W', '0', '30E', '60E', '90E', '120E', '150E', '180E'))
+    # plt.xticks((-72, -60, -48, -36, -24, -12, 0, 12, 24, 36, 48, 60, 72), ('180W', '150W',
+    #            '120W', '90W', '60W', '30W', '0', '30E', '60E', '90E', '120E', '150E', '180E'))
+    plt.ylabel('Time [months]')
     cbar = plt.colorbar(pad=0.1)
-    cbar.set_ticks(np.arange(-40, 41, 5))
+    cbar.set_ticks(np.arange(-20, 21, 5))
     cbar.ax.set_title('K')
     # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/abs_temp_anomaly_%s_new.eps' %(heights[level]), format='eps')
     plt.show()
@@ -434,23 +436,26 @@ def deep_convection(cubes, time=39):
     days 1170-1200 of the 1800-day run."""
 
     for cube in cubes:
-        if cube.long_name == 'Deep convection indicator':
+        if cube.long_name == 'deep convection indicator':
             data = cube.copy()
 
     run_length = np.arange(0, data.shape[0])
-    longitudes = data.shape[3]
-    latitudes = data.shape[2]
+    longitudes = data.shape[2]
+    latitudes = data.shape[1]
 
     plt.figure(figsize=(10, 5))
     plt.contourf(np.arange(-longitudes/2, longitudes/2), np.arange(-latitudes/2, latitudes/2),
-                 np.roll(data[time, :, :].data, 72, axis=1), reds.N, cmap=reds)
+                 np.roll(data[time, :, :].data, 144, axis=1), reds.N, cmap=reds)
     plt.title('Deep convection indicator')
     plt.xlabel('Longitude [degrees]')
     plt.ylabel('Latitude [degrees]')
-    plt.xticks((-72, -60, -48, -36, -24, -12, 0, 12, 24, 36, 48, 60, 72), ('180W', '150W',
-               '120W', '90W', '60W', '30W', '0', '30E', '60E', '90E', '120E', '150E', '180E'))
-    plt.yticks((-45, -30, -15, 0, 15, 30, 45),
-               ('90S', '60S', '30S', '0', '30N', '60N', '90N'))
+    plt.xticks((-144, -120, -96, -72, -48, -24, 0, 24, 48, 72, 96, 120, 144), ('180W', '150W',
+                '120W', '90W', '60W', '30W', '0', '30E', '60E', '90E', '120E', '150E', '180E'))
+    plt.yticks((-90,-60, -30, 0, 30, 60, 90), ('90S', '60S', '30S', '0', '30N', '60N', '90N'))
+    # plt.xticks((-72, -60, -48, -36, -24, -12, 0, 12, 24, 36, 48, 60, 72), ('180W', '150W',
+    #            '120W', '90W', '60W', '30W', '0', '30E', '60E', '90E', '120E', '150E', '180E'))
+    # plt.yticks((-45, -30, -15, 0, 15, 30, 45),
+    #            ('90S', '60S', '30S', '0', '30N', '60N', '90N'))
     cbar = plt.colorbar(pad=0.1)
     # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/deepconvection.eps', format='eps')
     plt.show()
