@@ -193,7 +193,7 @@ def ep_flux(cubes, density, g=10.9, omega=0.64617667e-05, long_slice=(0,-1), sta
     print(EP_phi_div[-1,48,20], EP_up_div[-1,48,20])
     print(coriolis[20], rcosphi[20],YTH_anomaly_zonal_mean[-1,48,20], THETAp[-1,48,20])
     
-    EP_div = np.mean((EP_phi_div[:,:-1,:] + EP_up_div), axis=0)
+    EP_div = np.mean((EP_phi_div[:,:-1,:] + EP_up_div), axis=0)*(1/rcosphi)
     
     # x_zonal_mean = x_wind.collapsed('longitude', iris.analysis.MEAN)
     # x_zonal_mean = x_zonal_mean.data
@@ -202,10 +202,10 @@ def ep_flux(cubes, density, g=10.9, omega=0.64617667e-05, long_slice=(0,-1), sta
     x_axis = pressure.coord('latitude').points
     # y_axis = pressure_zonal_mean
     y_axis = pressure.coord('Hybrid height').points
-    plt.contourf(x_axis, y_axis[35:59], EP_div[35:59,:], brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+    plt.contourf(x_axis[15:75], y_axis[35:59], EP_div[35:59,15:75], brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     cbar = plt.colorbar(pad=0.1)
-    cbar.ax.set_title('units')
-    CS = plt.contour(x_axis, y_axis[35:59], x_mean[35:59,:].data, colors='black', linewidths=0.5)
+    # cbar.ax.set_title('units')
+    CS = plt.contour(x_axis[15:75], y_axis[35:59], x_mean[35:59,15:75].data, colors='black', linewidths=0.5)
     plt.title('Mean EP flux divergence, day=%s to %s' %(start/4, end/4))
     plt.xlabel('Latitude [degrees]')
     plt.ylabel('Height [m]')

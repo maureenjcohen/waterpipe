@@ -45,14 +45,14 @@ def plot_zonal_wind(cubes, time_slice=-1):
     nightside = x_wind.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -90 <= v <= 90))
 
     x_end = x_wind[-4:,:,:,:]
-    x_mean = x_end.collapsed('t',iris.analysis.MEAN)
+    x_mean = x_end.collapsed('time',iris.analysis.MEAN)
     
     dayside_zonal_mean = dayside.collapsed('longitude', iris.analysis.MEAN)
     nightside_zonal_mean = nightside.collapsed('longitude', iris.analysis.MEAN)    
     dayside_zonal_end = dayside_zonal_mean[-4:,:,:]
     nightside_zonal_end = nightside_zonal_mean[-4:,:,:]
-    dayside_zonal_time = dayside_zonal_end.collapsed('t', iris.analysis.MEAN)
-    nightside_zonal_time = nightside_zonal_end.collapsed('t', iris.analysis.MEAN)
+    dayside_zonal_time = dayside_zonal_end.collapsed('time', iris.analysis.MEAN)
+    nightside_zonal_time = nightside_zonal_end.collapsed('time', iris.analysis.MEAN)
     
     CS_day = iplt.contourf(dayside_zonal_mean[time_slice,:,:], levels=brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Dayside Zonal Mean Zonal Wind [m s-1]', y=1.05)
@@ -235,6 +235,7 @@ def plot_streamlines(cubes, level=14, time_slice=-1):
  
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
     heights = np.round(x_wind.coord('level_height').points,0)
+    lats, lons = x_wind.shape[2], x_wind.shape[3]
    
     speed = iris.analysis.maths.apply_ufunc(np.sqrt, (x_wind**2 + y_wind**2))
     
@@ -245,17 +246,17 @@ def plot_streamlines(cubes, level=14, time_slice=-1):
     plt.colorbar(pad=0.1)
     plt.show()
 
-    X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
+    X,Y = np.meshgrid(np.arange(-lons/2,lons/2), np.arange(-lats/2,lats/2))
     fig = plt.figure(figsize = (12, 7)) 
-    strm = plt.streamplot(X, Y, np.roll(x_wind[time_slice,level,:,:].data, 72, axis=1), np.roll(y_wind[time_slice,level,:,:].data, 72, axis=1), density = 0.5, color=np.roll(speed[time_slice,level,:,:].data, 72, axis=1), cmap=brewer_reds)
+    strm = plt.streamplot(X, Y, np.roll(x_wind[time_slice,level,:,:].data, int(lons/2), axis=1), np.roll(y_wind[time_slice,level,:,:].data, int(lons/2), axis=1), density = 0.5, color=np.roll(speed[time_slice,level,:,:].data, int(lons/2), axis=1), cmap=brewer_reds)
     # Since .data method extracts the numpy array and strips the metadata, the longitude/latitude information is lost.
     # To align plot so that (0,0) is at the center as in the Iris plots, use numpy.roll to shift columns (longitude) 180 degrees (72 places)
     fig.colorbar(strm.lines)
     plt.title('Wind speed and direction [m s-1], h=%s km' %(heights[level]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
-    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-    plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
+    # plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    # plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
     plt.show() 
 
 

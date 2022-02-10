@@ -92,7 +92,7 @@ def ep_flux2(cubes, omega=0.64617667e-05, long_slice=(0,-1), start=2880, end=324
                 u_freq = sp.fftpack.fftfreq(len(u_psd), 1./143)
 
                 highpass = u_fft.copy()
-                highpass[np.abs(u_freq) < 1.1] = 0
+                highpass[np.abs(u_freq) < 5.1] = 0
 
                 u_cleaned = np.real(sp.fftpack.ifft(highpass))
                 u_bar = np.mean(u_cleaned)
@@ -148,9 +148,9 @@ def ep_flux2(cubes, omega=0.64617667e-05, long_slice=(0,-1), start=2880, end=324
     u_bar = x_wind.collapsed('longitude', iris.analysis.MEAN)
     u_bar_data = u_bar.data
     
-    EP_phi = np.cos(lats)*ep_latderivative(-uvprimes_zonal_mean,radius*np.sin(lats)) + 2*np.sin(lats)*uvprimes_zonal_mean
+    EP_phi = np.cos(lats)*ep_latderivative(-uvprimes_zonal_mean,lats) + 2*np.sin(lats)*uvprimes_zonal_mean
     EP_phi = EP_phi/(radius*np.cos(lats))
-    EP_up = ep_zderivative(coriolis*vertical_eddy, pressure_zonal_mean)
+    EP_up = ep_zderivative(coriolis*vertical_eddy, logpressure_zonal_mean)
     
     print(EP_phi[-1,-1,20], EP_up[-1,-1,20])
     print(coriolis[20],uvprimes_zonal_mean[-1,-1,20], THETAp[-1,-1,20])
