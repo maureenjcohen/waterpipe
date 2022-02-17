@@ -16,12 +16,11 @@ from matplotlib.colors import TwoSlopeNorm
 import numpy as np
 import scipy as sp
 import windspharm
+import pyvista as pv
 
 brewer_bg = mpl_cm.get_cmap('brewer_PuBu_09')
 brewer_red = mpl_cm.get_cmap('brewer_YlOrRd_09')
 brewer_redblu = mpl_cm.get_cmap('brewer_RdBu_11')
-
-
 
 
 
@@ -385,7 +384,7 @@ def plot_energy(cubes, lats=(30,61), longs=(0,13)):
         plt.xlabel('Time [days]')
         plt.show()
         
-def composites2D(cubes, start=0, end=10, level=25, n=3, meaning=7):
+def composites2D(cubes, start=0, end=10, nlev=38, level=25, n=3, meaning=7):
     
     for cube in cubes:
         if cube.standard_name == 'x_wind':
@@ -396,8 +395,8 @@ def composites2D(cubes, start=0, end=10, level=25, n=3, meaning=7):
             cloud_cover = cube.copy()
 
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())            
-    meaned_x = np.mean(x_wind.data.reshape(-1,meaning,60,90,144),axis=1)
-    meaned_y = np.mean(y_wind.data.reshape(-1,meaning,60,90,144),axis=1)
+    meaned_x = np.mean(x_wind.data.reshape(-1,meaning,nlev,90,144),axis=1)
+    meaned_y = np.mean(y_wind.data.reshape(-1,meaning,nlev,90,144),axis=1)
     meaned_cloud = np.mean(cloud_cover.data.reshape(-1,meaning,90,144), axis=1)
     
     # X,Y = np.meshgrid(np.arange(-meaned_x.shape[3]/2,meaned_x.shape[3]/2), np.arange(-meaned_x.shape[2]/2,meaned_x.shape[2]/2))
@@ -426,7 +425,7 @@ def composites2D(cubes, start=0, end=10, level=25, n=3, meaning=7):
         plt.show()
         
         
-def composites_levels(cubes, start=1, end=10, level=25, meaning=15, n=3, cloudtype='ice', fractype='volume'):
+def composites_levels(cubes, start=1, end=10, nlev=38, level=25, meaning=15, n=3, cloudtype='ice', fractype='volume'):
 
     for cube in cubes:
         if cube.standard_name == 'x_wind':
@@ -446,14 +445,14 @@ def composites_levels(cubes, start=1, end=10, level=25, meaning=15, n=3, cloudty
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
     heights = np.round(x_wind.coord('level_height').points*1e-03,2)
             
-    meaned_x = np.mean(x_wind.data.reshape(-1,meaning,60,90,144),axis=1)
-    meaned_y = np.mean(y_wind.data.reshape(-1,meaning,60,90,144),axis=1)
+    meaned_x = np.mean(x_wind.data.reshape(-1,meaning,nlev,90,144),axis=1)
+    meaned_y = np.mean(y_wind.data.reshape(-1,meaning,nlev,90,144),axis=1)
     
     if cloudtype=='ice':
-        meaned_cloud = np.mean(ice.data.reshape(-1,meaning,61,90,144), axis=1)
+        meaned_cloud = np.mean(ice.data.reshape(-1,meaning,nlev+1,90,144), axis=1)
         titleterm = 'Ice cloud'
     elif cloudtype=='liq':
-        meaned_cloud = np.mean(liq.data.reshape(-1,meaning,61,90,144), axis=1)
+        meaned_cloud = np.mean(liq.data.reshape(-1,meaning,nlev+1,90,144), axis=1)
         titleterm = 'Liquid cloud'
     else:
         print('Argument cloudtype must be ice or liq. Default is ice.')
@@ -519,4 +518,45 @@ def cloud_profile(cubes, time_slice=340, lon=36, cloudtype='ice', fractype='volu
     plt.ylabel('Height [km]')
     plt.xlabel('Latitude [degrees]')
     plt.show()
+
+
+def cloud_structure(cubes, lat=45, time_slice=-1, fractype='mass'):
     
+    for cube in cubes:
+        if cube.long_name == 'ice_cloud_volume_fraction_in_atmosphere_layer' and fractype=='volume':
+            ice = cube[time_slice,:,lat,:].copy()
+        if cube.long_name == 'liquid_cloud_volume_fraction_in_atmosphere_layer' and fractype=='volume':
+            liq = cube[time_slice,:,lat,:].copy()
+        if cube.standard_name == 'mass_fraction_of_cloud_ice_in_air' and fractype=='mass':
+            ice = cube[time_slice,:,lat,:].copy()
+        if cube.standard_name == 'mass_fraction_of_cloud_liquid_water_in_air' and fractype=='mass':
+            liq = cube[time_slice,:,lat,:].copy()
+            
+    heights = np.round(ice.coord('level_height').points*1e-03,0)
+    lons = ice.coord('longitude').points
+    
+    if len(heights) > 39:
+        final_height = 43
+    else:
+        final_height = -1
+    
+    fig, ax = plt.subplots(figsize=(10,5))
+    
+    plota = ax.contourf(np.roll(lons,72), heights[:final_height], ice[:final_height,:].data*10**4, cmap='Blues')
+    cba = plt.colorbar(plota)
+    cba.ax.set_title('$10^{-4}$ kg/kg', size=10)
+    cba.set_label('Ice', size=15)
+    
+    plotb = ax.contourf(np.roll(lons,72), heights[:final_height], liq[:final_height,:].data*10**4, cmap='Reds', alpha=0.5)
+    cbb = plt.colorbar(plotb)
+    cbb.ax.set_title('$10^{-4}$ kg/kg', size=10)
+    cbb.set_label('Liquid', size=15)
+    
+    plt.xticks([0,30,60,90,120,150,180,210,240,270,300,330,360], ['180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'])
+
+    ax.set_xlabel('Longitude [degrees]')
+    ax.set_ylabel('Height [km]')
+    
+    ax.set_title('Cloud structure at lat=%s' %((lat-45)*2))
+    plt.show()
+        
