@@ -20,8 +20,8 @@ from iris.analysis import calculus
 
 
 brewer_redblu = mpl_cm.get_cmap('RdBu_r')
-reds = mpl_cm.get_cmap('brewer_Reds_09')
-redblu = mpl_cm.get_cmap('brewer_RdBu_11')
+reds = mpl_cm.get_cmap('Reds')
+redblu = mpl_cm.get_cmap('RdBu_r')
 magma = mpl_cm.get_cmap('magma')
 
 
@@ -185,7 +185,7 @@ def plot_temp_anomaly(cubes, period=(0, 220), lat=45, level=47):
     plt.show()
 
 
-def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, plot=False):
+def wave_acceleration(cubes, density,hlevel=47, lat=45, long=0, start=2880, end=3240, plot=False):
     
     """ This function plots several things:
         1) The high-pass filtered u-prime. We need to filter u-prime because
@@ -347,7 +347,7 @@ def wave_acceleration(cubes, hlevel=47, lat=45, long=0, start=2880, end=3240, pl
 
     print(array.shape, h.shape)
 
-    acceleration = array.copy()
+    acceleration = array.copy()*density[start:end,:-1,:,:]
     acceleration[:, 0, ...] = (
         array[:, 1, ...]-array[:, 0, ...])/(h[:, 1, ...]-h[:, 0, ...])
     acceleration[:, -1, ...] = (array[:, -1, ...] -
