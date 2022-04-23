@@ -21,7 +21,7 @@ brewer_redblu = mpl_cm.get_cmap('brewer_RdBu_11')
 
 
 @gif.frame
-def cloud_frame(cubes, time_slice=-1, nlat=256, nlon=512, nlev=38, level=25, meaning=10, n=8, cloudtype='ice', fractype='mass'):
+def cloud_frame(cubes, time_slice=-1, nlat=90, nlon=144, nlev=38, level=8, meaning=10, n=3, cloudtype='liq', fractype='mass'):
 
     for cube in cubes:
         if cube.standard_name == 'x_wind':
@@ -56,21 +56,21 @@ def cloud_frame(cubes, time_slice=-1, nlat=256, nlon=512, nlev=38, level=25, mea
     X,Y = np.meshgrid(np.arange(0,nlon), np.arange(0,nlat))   
         
     fig, ax = plt.subplots(figsize=(10,5))
-    plt.imshow(np.roll(meaned_cloud[time_slice,level, :,:]*(10**4),int(nlon/2),axis=1), cmap=brewer_bg)
+    plt.imshow(np.roll(meaned_cloud[time_slice,level, :,:],int(nlon/2),axis=1), cmap=brewer_bg)
     cbar = plt.colorbar()
     
-    if fractype=='mass':
-        cbar.ax.set_title('$10^{-4}$kg/kg')
+    # if fractype=='mass':
+    #     cbar.ax.set_title('$10^{-4}$kg/kg')
 
     
     plt.quiver(X[::n,::n],Y[::n,::n], np.roll(meaned_x[time_slice,level,::n,::n],int(nlon/(2*n)),axis=1), 
                 np.roll(-meaned_y[time_slice, level,::n,::n],int(nlon/(2*n)),axis=1),scale_units='xy',scale=5)
 
     plt.title('%s and horizontal wind, days %s to %s, h=%s km' %(titleterm, time_slice*meaning-meaning,time_slice*meaning, heights[level]))
-    # plt.xticks((0,12,24,36,48,60,72,84,96,108,120,132,144),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-    # plt.yticks((90,75,60,45,30,15,0),('90S','60S','30S','0','30N','60N','90N'))   
-    plt.xticks((0,128,256,384,512),('180W','90W','0','90E','180E'))
-    plt.yticks((256,128,0),('90S','0','90N')) 
+    plt.xticks((0,12,24,36,48,60,72,84,96,108,120,132,144),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    plt.yticks((90,75,60,45,30,15,0),('90S','60S','30S','0','30N','60N','90N'))   
+    # plt.xticks((0,128,256,384,512),('180W','90W','0','90E','180E'))
+    # plt.yticks((256,128,0),('90S','0','90N')) 
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
         
@@ -78,8 +78,8 @@ def cloud_frame(cubes, time_slice=-1, nlat=256, nlon=512, nlev=38, level=25, mea
     
 frames = []
 for i in range(29):
-    frame = cloud_frame(quad,time_slice=i)
+    frame = cloud_frame(close,time_slice=i)
     frames.append(frame)
 
-gif.save(frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_quad/level.gif', duration = 30, unit = 's', between='startend')
+gif.save(frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_proxb0423_40km/level8liq.gif', duration = 30, unit = 's', between='startend')
         
