@@ -13,7 +13,7 @@ import iris, cartopy
 import cartopy.crs as ccrs
 import gif
 
-savepath = '/exports/csce/datastore/geos/users/s1144983/um_data/control/gifs'
+savepath = '/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_proxb0423_40km/)'
 tall = iris.load('/exports/csce/datastore/geos/groups/aerosol/maureen/um_data/control_85km.nc')
 hot = mpl_cm.get_cmap('hot')
 blues = mpl_cm.get_cmap('Blues_r')
@@ -54,16 +54,12 @@ gif.save(temp_frames, str(savepath) + '/temp_sphere_fast_nolines.gif', duration 
 
 
 @gif.frame
-def cloud_sphere(cubes,i, t):
-    
-    for cube in cubes:
-        if cube.long_name == 'cloud_area_fraction_assuming_maximum_random_overlap':
-            cloud_cover = cube.copy()
+def cloud_sphere(cube,i):
             
     lon = np.linspace(-180,180,144)
     lat = np.linspace(-90,90,90)
     
-    ortho = ccrs.Orthographic(central_longitude=i,central_latitude=0)
+    ortho = ccrs.Orthographic(central_longitude=0,central_latitude=0)
     
     fig = plt.figure()
     # fig, ax0 = plt.subplots()
@@ -73,16 +69,21 @@ def cloud_sphere(cubes,i, t):
     ax = plt.axes(projection=ortho)
     ax.set_global()
     
-    ax.contourf(lon, lat, np.roll(cloud_cover[t,:,:].data, 72, axis=1), transform=ccrs.PlateCarree(), cmap=blues)
-    plt.show()
+    ax.contourf(lon, lat, np.roll(cube[i,:,:], 72, axis=1), transform=ccrs.PlateCarree(), cmap=blues)
+    # plt.show()
 
     
 cloud_frames = []
-for i in range(0,360,30):
-    cloud_frame = cloud_sphere(tall,i,int(i/30))
+for cube in close:
+    if cube.standard_name == 'mass_fraction_of_cloud_ice_in_air':
+        cloud_cover = cube[:,25,:,:].copy()
+cloud_cover = cloud_cover.data
+
+for i in range(250,350):
+    cloud_frame = cloud_sphere(cloud_cover,i)
     cloud_frames.append(cloud_frame)
     
-gif.save(cloud_frames, str(savepath) + '/clouds_sphere.gif', duration = 12, unit = 's', between='startend')
+gif.save(cloud_frames, '/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_proxb0423_40km/cloud_sphere_lev25ice.gif', duration = 50, unit = 's', between='startend')
         
             
         
