@@ -200,18 +200,18 @@ def plot_streamfunction(cubes, level=14, time_slice=-1, omega=0.64617667):
     plt.title('Streamfunction [$10^6$ m2 s-1], h = %s km' %(heights[level]), y=1.20)
     plt.show()
 
-    planet_vort = wind.planetaryvorticity(omega=omega)
-    relative_vort = wind.vorticity()
-    absolute_vort = wind.absolutevorticity()
+    # planet_vort = wind.planetaryvorticity(omega=omega)
+    # relative_vort = wind.vorticity()
+    # absolute_vort = wind.absolutevorticity()
     
-    iplt.contourf(relative_vort[time_slice,level,:,:], brewer_bg.N, cmap=brewer_bg)
-    plt.title('Relative Vorticity, h = %s km' %(heights[level]), y=1.20)
-    plt.ylabel('Latitude [degrees]')
-    plt.xlabel('Longitude [degrees]')
-    ax = plt.gca()
-    ax.gridlines(draw_labels=True)
-    plt.colorbar(orientation='horizontal')
-    plt.show()
+    # iplt.contourf(relative_vort[time_slice,level,:,:], brewer_bg.N, cmap=brewer_bg)
+    # plt.title('Relative Vorticity, h = %s km' %(heights[level]), y=1.20)
+    # plt.ylabel('Latitude [degrees]')
+    # plt.xlabel('Longitude [degrees]')
+    # ax = plt.gca()
+    # ax.gridlines(draw_labels=True)
+    # plt.colorbar(orientation='horizontal')
+    # plt.show()
 
         
 
@@ -681,7 +681,34 @@ def vorticity_section(cubes, time_slice=-1, omega=0.64617667):
     plt.xlabel('Latitude [degrees]')
     plt.colorbar(orientation='horizontal')
     plt.show()
+
+
+def cyclone_centre(cubes,level=8,omega=0.79333):
     
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube[:,level,:,:].copy()
+        if cube.standard_name == 'y_wind':
+            y_wind = cube[:,level,:,:].copy()
+        if cube.standard_name == 'upward_air_velocity':
+            z_wind = cube[:,level,:,:].copy()    
     
+    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+
+    wind = windspharm.iris.VectorWind(x_wind, y_wind)
+    streamfunction, velpotential = wind.sfvp()
+    
+    data = streamfunction[:,45:80,:].data
+    points = []
+    for t in range(0,x_wind.shape[0]):
+        centre = np.min(data[t,:,:])
+        location = np.where(data[t,:,:]==centre)
+        points.append(location[1])
+    
+    plt.plot(points)
+    plt.title('Location of cyclone centre')
+    plt.ylabel('Longitude')
+    plt.xlabel('Time [days]')
+    plt.show()    
     
     
