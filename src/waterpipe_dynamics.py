@@ -197,7 +197,7 @@ def plot_streamfunction(cubes, level=14, time_slice=-1, omega=0.64617667):
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.colorbar(orientation='horizontal')
-    plt.title('Streamfunction [$10^6$ m2 s-1], h = %s km' %(heights[level]), y=1.20)
+    plt.title('Streamfunction [$10^6$ m2 s-1], h = %s m' %(heights[level]), y=1.20)
     plt.show()
 
     # planet_vort = wind.planetaryvorticity(omega=omega)
@@ -683,7 +683,7 @@ def vorticity_section(cubes, time_slice=-1, omega=0.64617667):
     plt.show()
 
 
-def cyclone_centre(cubes,level=8,omega=0.79333):
+def cyclone_centre(cubes,level=8,meaning=10,wind_lat=60,omega=0.79333):
     
     for cube in cubes:
         if cube.standard_name == 'x_wind':
@@ -694,21 +694,46 @@ def cyclone_centre(cubes,level=8,omega=0.79333):
             z_wind = cube[:,level,:,:].copy()    
     
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+    lons = x_wind.coord('longitude').points
+    time_axis = range(0,x_wind.shape[0]-meaning+1)
+    lat_label = x_wind.coord('latitude').points[wind_lat]
 
     wind = windspharm.iris.VectorWind(x_wind, y_wind)
     streamfunction, velpotential = wind.sfvp()
     
-    data = streamfunction[:,45:80,:].data
+    data = streamfunction[:,45:80,60:108].data
     points = []
     for t in range(0,x_wind.shape[0]):
         centre = np.min(data[t,:,:])
         location = np.where(data[t,:,:]==centre)
         points.append(location[1])
+
+    meaned_centre = np.convolve(np.array(points).flatten(),np.ones(meaning),'valid')/meaning
     
-    plt.plot(points)
-    plt.title('Location of cyclone centre')
-    plt.ylabel('Longitude')
-    plt.xlabel('Time [days]')
-    plt.show()    
+    zonal_mean = x_wind.collapsed('longitude',iris.analysis.MEAN).data
+    rolling_zmzw = np.convolve(zonal_mean[:,wind_lat],np.ones(meaning),'valid')/meaning
+    
+    fig, ax1 = plt.subplots()
+    ax1.set_xlabel('Time [days]')
+    ax1.set_ylabel('Longitude [degrees]')
+    ax1.plot(time_axis, meaned_centre, color='b', label='Cyclone centre')
+    ax1.set_yticks(ticks=range(0,len(lons[60:108]),4),labels=lons[60:108:4])
+    ax1.tick_params(axis='y', labelcolor='b')
+    
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('Zonal mean zonal wind [m/s]')
+    ax2.plot(time_axis, rolling_zmzw, color='r', label='Zonal wind')
+    ax2.tick_params(axis='y', labelcolor='r')
+    
+    plt.title('Cyclone motion vs ZM zonal wind at %sN, %s-day mean' %(lat_label,meaning))
+    fig.tight_layout()
+    plt.show()
+    
+    # plt.plot(meaned_centre)
+    # plt.title('Location of cyclone centre')
+    # plt.ylabel('Longitude')
+    # plt.xlabel('Time [days]')
+    # plt.yticks(ticks=range(0,len(lons[60:108]),4),labels=lons[60:108:4])
+    # plt.show()    
     
     

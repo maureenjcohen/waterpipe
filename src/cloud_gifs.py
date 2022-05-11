@@ -21,7 +21,7 @@ brewer_redblu = mpl_cm.get_cmap('brewer_RdBu_11')
 
 
 @gif.frame
-def cloud_frame(cubes, time_slice=-1, nlat=90, nlon=144, nlev=38, level=8, meaning=10, n=3, cloudtype='liq', fractype='mass'):
+def cloud_frame(cubes, time_slice=-1, nlat=90, nlon=144, nlev=38, level=8, meaning=5, n=4, cloudtype='ice', fractype='mass'):
 
     for cube in cubes:
         if cube.standard_name == 'x_wind':
@@ -56,7 +56,7 @@ def cloud_frame(cubes, time_slice=-1, nlat=90, nlon=144, nlev=38, level=8, meani
     X,Y = np.meshgrid(np.arange(0,nlon), np.arange(0,nlat))   
         
     fig, ax = plt.subplots(figsize=(10,5))
-    plt.imshow(np.roll(meaned_cloud[time_slice,level, :,:],int(nlon/2),axis=1), cmap=brewer_bg)
+    plt.imshow(np.roll(meaned_cloud[time_slice,level, :,:],int(nlon/2),axis=1), cmap=brewer_bg, vmax=0.0002,vmin=0.0)
     cbar = plt.colorbar()
     
     # if fractype=='mass':
@@ -78,8 +78,8 @@ def cloud_frame(cubes, time_slice=-1, nlat=90, nlon=144, nlev=38, level=8, meani
     
 frames = []
 for i in range(29):
-    frame = cloud_frame(close,time_slice=i)
+    frame = cloud_frame(trap,time_slice=i)
     frames.append(frame)
 
-gif.save(frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_proxb0423_40km/level8liq.gif', duration = 30, unit = 's', between='startend')
+gif.save(frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_trapcontrol_80km/level8liq.gif', duration = 30, unit = 's', between='startend')
         

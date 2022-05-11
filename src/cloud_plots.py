@@ -118,8 +118,8 @@ def cloud_lats(cubes, time_slice=-1, long=0):
     
     for cube in cubes:
 
-        if cube.long_name == 'cloud_volume_fraction_in_atmosphere_layer':
-            cloud_volume = cube.copy()
+        # if cube.long_name == 'cloud_volume_fraction_in_atmosphere_layer':
+        #     cloud_volume = cube.copy()
         if cube.long_name == 'liquid_cloud_volume_fraction_in_atmosphere_layer':
             liquid_cloud = cube.copy()
         if cube.long_name == 'ice_cloud_volume_fraction_in_atmosphere_layer':
@@ -129,8 +129,8 @@ def cloud_lats(cubes, time_slice=-1, long=0):
         if cube.standard_name == 'mass_fraction_of_cloud_liquid_water_in_air':
             liquid_condensate = cube.copy()
     
-    longitudes = cloud_volume.coord('longitude').points
-    for cube in (cloud_volume, liquid_cloud, ice_cloud,
+    longitudes = liquid_cloud.coord('longitude').points
+    for cube in (liquid_cloud, ice_cloud,
                  ice_condensate, liquid_condensate):
         
         if cube.standard_name == None:
@@ -425,7 +425,7 @@ def composites2D(cubes, start=0, end=10, nlev=38, level=25, n=3, meaning=7):
         plt.show()
         
         
-def composites_levels(cubes, start=1,end=10, nlat=90, nlon=144, nlev=38, level=25, meaning=10, n=8, cloudtype='ice', fractype='mass'):
+def composites_levels(cubes, start=1,end=20, nlat=90, nlon=144, nlev=38, level=25, meaning=5, n=4, cloudtype='ice', fractype='volume'):
 
     for cube in cubes:
         if cube.standard_name == 'x_wind':
