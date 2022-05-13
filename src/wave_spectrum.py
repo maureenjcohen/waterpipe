@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jun  4 13:36:06 2021
+Created on Thu May 12 15:22:45 2022
 
-@author: Maureen Cohen
+@author: Mo Cohen
 """
 import iris, windspharm
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as mpl_cm
+import scipy as sp
 
 
+plasma = mpl_cm.get_cmap('plasma')
 
-def decomposition(cubes, n=3, start=0, end=120, level=47):  
+
+def wave_spectrum(cubes, n=3, start=0, end=5, level=8):  
     
     """ Uses the windspharm package to perform a Helmholtz decomposition on an Iris cube
         Helmholtz composition splits the vector field into its divergent and rotational components
@@ -57,51 +61,21 @@ def decomposition(cubes, n=3, start=0, end=120, level=47):
     zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
     # Calculate zonal means of the x and y components of the rotational component
     eddy_upsi = upsi - zonal_upsi
-    eddy_vpsi = vpsi - zonal_vpsi 
+    eddy_vpsi = vpsi - zonal_vpsi
+    magnitude = np.sqrt(eddy_upsi.data**2 + eddy_vpsi.data**2)
+    fft2 = sp.fft.fftshift(sp.fftpack.fft2(sp.fft.ifftshift(magnitude[level,:,:])))
+    yfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[0],d=1./90))
+    xfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[1],d=1./144))
+    j, i = yfreqs > 0, xfreqs > 0
+    psd = np.abs(fft2)**2
     # Subtract zonal means from the original cubes to get the x and y eddy rotational components
 
     X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
     # Create meshgrid with the spatial dimensions of the Iris cube
     
     fig1, ax1 = plt.subplots(figsize = (10,5)) 
-    q1 = ax1.quiver(X[::n,::n], Y[::n,::n], np.roll(x_wind[level,::n,::n].data, 72, axis=1), np.roll(y_wind[level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=25)
-    # Create a quiver plot. The np.roll function moves the cube data so the substellar point is centred.
-    ax1.quiverkey(q1, X=0.9, Y=1.05, U=25, label='25 m/s', labelpos='E', coordinates='axes')
-    # This creates the key with the arrow size. The value of U, the label string, and the value of scale in the previous line should all match.
-    plt.title('Wind Vectors [m/s], h = %s km' %(km_heights[level]))
-    plt.xlabel('Longitude')
-    plt.ylabel('Latitude')
-    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-    plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N')) 
-    # Labelled the longs and lats manually 
-    # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/circulation.eps', format='eps')   
-    plt.show()
-    
-    fig2, ax2 = plt.subplots(figsize = (10,5)) 
-    q2 = ax2.quiver(X[::n,::n], Y[::n,::n], np.roll(uchi[level,::n,::n].data, 72, axis=1), np.roll(-vchi[level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=3)
-    # Note -vchi is plotted. Same with the other y components below.
-    ax2.quiverkey(q2, X=0.9, Y=1.05, U=3, label='3 m/s', labelpos='E', coordinates='axes')
-    # Made the arrow size smaller since the divergent winds are weaker
-    plt.title('Divergent component of wind [m s-1], h=%s bar, %s km' %(p_heights[level,0,0], km_heights[level]))
-    plt.xlabel('Longitude')
-    plt.ylabel('Latitude')
-    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-    plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
-    plt.show() 
-                
-    fig3, ax3 = plt.subplots(figsize = (10,5)) 
-    q3 = ax3.quiver(X[::n,::n], Y[::n,::n], np.roll(upsi[level,::n,::n].data, 72, axis=1), np.roll(-vpsi[level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=25)
-    ax3.quiverkey(q3, X=0.9, Y=1.05, U=25, label='25 m/s', labelpos='E', coordinates='axes')
-    plt.title('Rotational component of wind [m s-1], h=%s bar, %s km' %(p_heights[level,0,0], km_heights[level]))
-    plt.xlabel('Longitude')
-    plt.ylabel('Latitude')
-    plt.xticks((-72,-60,-48,-36,-24,-12,0,12,24,36,48,60,72),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
-    plt.yticks((-45,-30,-15,0,15,30,45),('90S','60S','30S','0','30N','60N','90N'))    
-    plt.show()
-    
-    fig4, ax4 = plt.subplots(figsize = (10,5)) 
-    q4 = ax4.quiver(X[::n,::n], Y[::n,::n], np.roll(eddy_upsi[level,::n,::n].data, 72, axis=1), np.roll(-eddy_vpsi[level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=4)
-    ax4.quiverkey(q4, X=0.9, Y=1.05, U=4, label='4 m/s', labelpos='E', coordinates='axes')
+    q = ax1.quiver(X[::n,::n], Y[::n,::n], np.roll(eddy_upsi[level,::n,::n].data, 72, axis=1), np.roll(-eddy_vpsi[level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=4)
+    ax1.quiverkey(q, X=0.9, Y=1.05, U=4, label='4 m/s', labelpos='E', coordinates='axes')
     plt.title('Eddy Rotational Component of Wind [m/s], h = %s km' %(km_heights[level]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
@@ -110,4 +84,11 @@ def decomposition(cubes, n=3, start=0, end=120, level=47):
     # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/eddy_rot.eps', format='eps')   
     plt.show()
     
+    fig2,ax2 = plt.subplots(figsize = (10,5))
+    im = ax2.contourf(xfreqs[73:78],yfreqs[46:51],psd[46:51,73:78], cmap=plasma)
+    plt.title('Power spectrum of eddy rotational wind magnitude, days %s to %s' %(start,end))
+    plt.xlabel('Zonal wavenumber')
+    plt.ylabel('Meridional wavenumber')
+    fig2.colorbar(im)
+    plt.show()    
     

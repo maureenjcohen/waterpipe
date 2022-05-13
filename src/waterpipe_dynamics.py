@@ -695,13 +695,14 @@ def cyclone_centre(cubes,level=8,meaning=10,wind_lat=60,omega=0.79333):
     
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
     lons = x_wind.coord('longitude').points
+    heights = np.round(x_wind.coord('level_height').points*1e-03,2)
     time_axis = range(0,x_wind.shape[0]-meaning+1)
     lat_label = x_wind.coord('latitude').points[wind_lat]
 
     wind = windspharm.iris.VectorWind(x_wind, y_wind)
     streamfunction, velpotential = wind.sfvp()
     
-    data = streamfunction[:,45:80,60:108].data
+    data = streamfunction[:,45:90,0:72].data
     points = []
     for t in range(0,x_wind.shape[0]):
         centre = np.min(data[t,:,:])
@@ -716,16 +717,16 @@ def cyclone_centre(cubes,level=8,meaning=10,wind_lat=60,omega=0.79333):
     fig, ax1 = plt.subplots()
     ax1.set_xlabel('Time [days]')
     ax1.set_ylabel('Longitude [degrees]')
-    ax1.plot(time_axis, meaned_centre, color='b', label='Cyclone centre')
-    ax1.set_yticks(ticks=range(0,len(lons[60:108]),4),labels=lons[60:108:4])
+    ax1.plot(time_axis,meaned_centre, color='b', label='Cyclone centre')
+    ax1.set_yticks(ticks=range(0,len(lons[0:72]),4),labels=lons[0:72:4])
     ax1.tick_params(axis='y', labelcolor='b')
     
-    ax2 = ax1.twinx()
-    ax2.set_ylabel('Zonal mean zonal wind [m/s]')
-    ax2.plot(time_axis, rolling_zmzw, color='r', label='Zonal wind')
-    ax2.tick_params(axis='y', labelcolor='r')
+    # ax2 = ax1.twinx()
+    # ax2.set_ylabel('Zonal mean zonal wind [m/s]')
+    # ax2.plot(time_axis, rolling_zmzw, color='r', label='Zonal wind')
+    # ax2.tick_params(axis='y', labelcolor='r')
     
-    plt.title('Cyclone motion vs ZM zonal wind at %sN, %s-day mean' %(lat_label,meaning))
+    plt.title('Cyclone motion at h=%s km %s-day mean' %(heights[level],meaning))
     fig.tight_layout()
     plt.show()
     
@@ -736,4 +737,65 @@ def cyclone_centre(cubes,level=8,meaning=10,wind_lat=60,omega=0.79333):
     # plt.yticks(ticks=range(0,len(lons[60:108]),4),labels=lons[60:108:4])
     # plt.show()    
     
+
+def zonal_wind_profile(cubes):   
+    
+    for cube in cubes:
+        if cube.standard_name == 'x_wind' or cube.standard_name =='eastward_wind':
+            x_wind = cube.copy()
+            
+    heights = np.round(x_wind.coord('level_height').points*1e-03,0)
+    lats = x_wind.coord('latitude').points
+    
+    mean2 = x_wind.collapsed(['longitude','time'], iris.analysis.MEAN)
+    
+    plt.contourf(lats,heights,mean2.data,cmap=brewer_redblu,norm=TwoSlopeNorm(0))
+    plt.colorbar()
+    plt.title('Long-term mean of ZMZW')
+    plt.xlabel('Latitude [degrees]')
+    plt.ylabel('Height [km]')
+    plt.show()
+    
+def rwave_speeds(cubes,omega=7.93e-06,radius=7160000,lat=60,level=8,start=300,end=400,kx=1,ky=0):
+    
+    for cube in cubes:
+        if cube.standard_name == 'x_wind' or cube.standard_name =='eastward_wind':
+            x_wind = cube[start:end,level,lat,:].copy()
+
+    zmzw = x_wind.collapsed('longitude',iris.analysis.MEAN)
+    mean_zmzw = zmzw.collapsed('time',iris.analysis.MEAN)
+    zmzw = zmzw.data
+    mean_zmzw = mean_zmzw.data
+    
+    lat_rad = lat*(np.pi/180) # Convert latitude to radians
+    beta = 2*omega*np.cos(lat_rad)/radius # Beta factor
+    
+    circum = 2*np.pi*radius*np.cos(lat_rad) # Circumference in meters at input latitude
+    
+    lambda_x = circum/kx # Wavelength in x-direction at input latitude
+    x_num = 2*np.pi/lambda_x
+
+    if ky == 0:
+        lambda_y = 0
+        y_num = 0
+    else:
+        lambda_y = circum/ky # Wavelength in y-direction at input latitude
+        y_num = 2*np.pi/lambda_y
+
+    
+    # c_phase = (mean_zmzw - (beta/(x_num**2+y_num**2)))*np.ones_like(zmzw)
+    # c_group = (mean_zmzw + (beta*(x_num**2-y_num**2))/((x_num**2+y_num**2)**2))*np.ones_like(zmzw)
+    c_phase = (zmzw - (beta/(x_num**2+y_num**2)))
+    c_group = (zmzw + (beta*(x_num**2-y_num**2))/((x_num**2+y_num**2)**2))
+                    
+    plt.plot(c_phase,color='b', label='Phase vel')
+    plt.plot(c_group, color='r', label='Group vel')
+    # plt.plot(zmzw, color='k',label='Zonal mean wind')
+    # plt.plot(c_phase+zmzw,color='g',label='Phase vel + zonal wind')
+    plt.title('Rossby wave phase and group velocity at %sN, kx=%s, ky=%s'%(lat,kx,ky))
+    plt.xlabel('Time [days]')
+    plt.ylabel('Velocity [m/s]')
+    plt.legend()
+    plt.show()
+            
     

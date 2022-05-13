@@ -662,7 +662,7 @@ def vapour_series(cubes, radius=7160000, level=47, x=(106,110), y=(43,47)):
     
     run_length, height = vapour.shape[0], vapour.shape[1]
     # Gives time in (Earth) days if the sampling rate is in samples per day
-    heights = np.round(vapour.coord('level_height').points*1e-03,0)
+    heights = np.round(vapour.coord('level_height').points*1e-03,2)
     lats, lat_points = vapour.coord('latitude'), vapour.coord('latitude').points
     longs, long_points = vapour.coord('longitude'), vapour.coord('longitude').points
     
@@ -687,7 +687,7 @@ def vapour_series(cubes, radius=7160000, level=47, x=(106,110), y=(43,47)):
 
     plt.figure(figsize=(10,5))   
     plt.plot(np.arange(0,run_length), data, linestyle='-', color='b')
-    plt.title('Specific Humidity at Eastern Terminator, h=%s km' %(heights[level]))    
+    plt.title('Specific Humidity at Western Terminator, h=%s km' %(heights[level]))    
     # plt.title('Specific humidity at lat=%s, long=%s, h=%s km' %(lat_points[lat_index], long_points[long_index], heights[level]))
     plt.xlabel('Time [days]') 
     plt.ylabel('Water vapour [kg/kg]')
