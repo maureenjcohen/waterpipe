@@ -16,7 +16,7 @@ from matplotlib.colors import TwoSlopeNorm
 import numpy as np
 import scipy as sp
 import windspharm
-import pyvista as pv
+# import pyvista as pv
 
 brewer_bg = mpl_cm.get_cmap('brewer_PuBu_09')
 brewer_red = mpl_cm.get_cmap('brewer_YlOrRd_09')
