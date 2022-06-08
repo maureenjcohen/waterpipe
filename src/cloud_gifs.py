@@ -82,59 +82,59 @@ def cloud_frame(cubes, time_slice=-1, nlat=90, nlon=144, nlev=38, level=8, meani
     # ax2.quiverkey(q1, X=0.9, Y=1.05, U=10, label='10 m/s', labelpos='E', coordinates='axes')
     
 frames = []
-for i in range(29):
-    frame = cloud_frame(trap,time_slice=i)
+for i in range(100,130):
+    frame = cloud_frame(fartrap,time_slice=i)
     frames.append(frame)
 
-gif.save(frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_trapcontrol_80km/level8liq.gif', duration = 30, unit = 's', between='startend')
+gif.save(frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_trapfar_80km/level8ice.gif', duration = 29, unit = 's', between='startend')
 
 
-@gif.frame
-def ps_gif(cubes, time_slice=0, level=8):  
+# @gif.frame
+# def ps_gif(cubes, time_slice=0, level=8):  
     
-    for cube in cubes:
-        if cube.standard_name == 'x_wind':
-            x_wind = cube[time_slice,:,:,:].copy()
-        if cube.standard_name == 'y_wind':
-            y_wind = cube[time_slice,:,:,:].copy()
+#     for cube in cubes:
+#         if cube.standard_name == 'x_wind':
+#             x_wind = cube[time_slice,:,:,:].copy()
+#         if cube.standard_name == 'y_wind':
+#             y_wind = cube[time_slice,:,:,:].copy()
 
-    # Select the cubes we want from the cube list
+#     # Select the cubes we want from the cube list
  
-    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+#     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
     
-    height = [('level_height', x_wind.coord('level_height').points)]
-    # Regrid so that all three cubes are on the same x, y, z grid. Uses the x_wind as reference for the others
+#     height = [('level_height', x_wind.coord('level_height').points)]
+#     # Regrid so that all three cubes are on the same x, y, z grid. Uses the x_wind as reference for the others
     
-    km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
-    # Extract pressure and kilometer values for labeling the plots
+#     km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
+#     # Extract pressure and kilometer values for labeling the plots
     
-    winds = windspharm.iris.VectorWind(x_wind,y_wind)
-    # Create a VectorWind data object from the x and y wind cubes
-    uchi,vchi,upsi,vpsi = winds.helmholtz(truncation=21)
-    # Calculate the Helmholtz decomposition. Truncation is set to 21 because 
-    # this is what Hammond and Lewis 2021 used.
+#     winds = windspharm.iris.VectorWind(x_wind,y_wind)
+#     # Create a VectorWind data object from the x and y wind cubes
+#     uchi,vchi,upsi,vpsi = winds.helmholtz(truncation=21)
+#     # Calculate the Helmholtz decomposition. Truncation is set to 21 because 
+#     # this is what Hammond and Lewis 2021 used.
     
-    zonal_upsi = upsi.collapsed('longitude', iris.analysis.MEAN)
-    zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
-    # Calculate zonal means of the x and y components of the rotational component
-    eddy_upsi = upsi - zonal_upsi
-    eddy_vpsi = vpsi - zonal_vpsi
-    magnitude = np.sqrt(eddy_upsi.data**2 + eddy_vpsi.data**2)
-    fft2 = sp.fft.fftshift(sp.fftpack.fft2(sp.fft.ifftshift(magnitude[level,:,:])))
-    yfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[0],d=1./90))
-    xfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[1],d=1./144))
-    psd = np.abs(fft2)**2
+#     zonal_upsi = upsi.collapsed('longitude', iris.analysis.MEAN)
+#     zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
+#     # Calculate zonal means of the x and y components of the rotational component
+#     eddy_upsi = upsi - zonal_upsi
+#     eddy_vpsi = vpsi - zonal_vpsi
+#     magnitude = np.sqrt(eddy_upsi.data**2 + eddy_vpsi.data**2)
+#     fft2 = sp.fft.fftshift(sp.fftpack.fft2(sp.fft.ifftshift(magnitude[level,:,:])))
+#     yfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[0],d=1./90))
+#     xfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[1],d=1./144))
+#     psd = np.abs(fft2)**2
     
-    fig2,ax2 = plt.subplots(figsize = (10,5))
-    im = ax2.contourf(xfreqs[73:78],yfreqs[46:51],psd[46:51,73:78], cmap=plasma)
-    plt.title('Power spectrum of eddy rotational wind magnitude, day %s' %(time_slice))
-    plt.xlabel('Zonal wavenumber')
-    plt.ylabel('Meridional wavenumber')
-    fig2.colorbar(im)
+#     fig2,ax2 = plt.subplots(figsize = (10,5))
+#     im = ax2.contourf(xfreqs[73:78],yfreqs[46:51],psd[46:51,73:78], cmap=plasma)
+#     plt.title('Power spectrum of eddy rotational wind magnitude, day %s' %(time_slice))
+#     plt.xlabel('Zonal wavenumber')
+#     plt.ylabel('Meridional wavenumber')
+#     fig2.colorbar(im)
 
-ps_frames = []
-for i in range(280,350):
-    ps_frame = ps_gif(trap,time_slice=i)
-    ps_frames.append(ps_frame)
+# ps_frames = []
+# for i in range(280,350):
+#     ps_frame = ps_gif(trap,time_slice=i)
+#     ps_frames.append(ps_frame)
 
-gif.save(ps_frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_trapcontrol_80km/pslevel8_zoom.gif', duration = 35, unit = 's', between='startend')
+# gif.save(ps_frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_trapcontrol_80km/pslevel8_zoom.gif', duration = 35, unit = 's', between='startend')
