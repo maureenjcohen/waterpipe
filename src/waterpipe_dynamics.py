@@ -86,15 +86,15 @@ def plot_zonal_wind(cubes, time_slice=-1):
     plt.colorbar(pad=0.1)
     plt.show()
     
-    gradient = iris.analysis.calculus.differentiate(dayside_zonal_mean[time_slice,:,45], 'Hybrid height')
+    gradient = iris.analysis.calculus.differentiate(dayside_zonal_mean[time_slice,:,45], 'level_height')
     iplt.plot(gradient*1000)
     plt.title('Vertical Wind Shear of Zonal Mean Zonal Wind at Equator')
     plt.xlabel('Wind shear [m s-1 km-1]')
     plt.ylabel('Height [m]')
     plt.show()
     
-    mean_grad = np.mean(np.abs(gradient[40:54].data)*1000)
-    print(mean_grad)
+    # mean_grad = np.mean(np.abs(gradient[40:54].data)*1000)
+    # print(mean_grad)
     
 def plot_zonal_line(cubes):
     
@@ -756,7 +756,7 @@ def zonal_wind_profile(cubes):
     plt.ylabel('Height [km]')
     plt.show()
     
-def rwave_speeds(cubes,omega=7.93e-06,radius=7160000,lat=60,level=8,start=300,end=400,kx=1,ky=0):
+def rwave_speeds(cubes,omega=7.93e-06,radius=7160000,lat=60,level=8,start=300,end=400,kx=1,ky=1):
     
     for cube in cubes:
         if cube.standard_name == 'x_wind' or cube.standard_name =='eastward_wind':
@@ -779,7 +779,7 @@ def rwave_speeds(cubes,omega=7.93e-06,radius=7160000,lat=60,level=8,start=300,en
         lambda_y = 0
         y_num = 0
     else:
-        lambda_y = circum/ky # Wavelength in y-direction at input latitude
+        lambda_y = 2*np.pi*radius/ky # Wavelength in y-direction at input latitude
         y_num = 2*np.pi/lambda_y
 
     
@@ -789,10 +789,10 @@ def rwave_speeds(cubes,omega=7.93e-06,radius=7160000,lat=60,level=8,start=300,en
     c_group = (zmzw + (beta*(x_num**2-y_num**2))/((x_num**2+y_num**2)**2))
                     
     plt.plot(c_phase,color='b', label='Phase vel')
-    plt.plot(c_group, color='r', label='Group vel')
+    # plt.plot(c_group, color='r', label='Group vel')
     # plt.plot(zmzw, color='k',label='Zonal mean wind')
     # plt.plot(c_phase+zmzw,color='g',label='Phase vel + zonal wind')
-    plt.title('Rossby wave phase and group velocity at %sN, kx=%s, ky=%s'%(lat,kx,ky))
+    plt.title('Rossby wave phase velocity at %sN, kx=%s, ky=%s'%(lat,kx,ky))
     plt.xlabel('Time [days]')
     plt.ylabel('Velocity [m/s]')
     plt.legend()

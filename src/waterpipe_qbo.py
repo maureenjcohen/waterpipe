@@ -103,7 +103,7 @@ def plot_hovmoellerx(cubes, radius=7160000, level=47, time='days', sampling=0.25
         plt.title('%s Mean Zonal Wind at 41 km' %(side))
         plt.xlabel('Time [%s]' %(time))
         plt.ylabel('Latitude')
-        plt.yticks((-45,0,45),('45S', '0', '45N'))
+        plt.yticks((-45,0,45),('90S', '0', '90N'))
         mbar = plt.colorbar(pad=0.1)
         mbar.set_ticks(np.arange(-120,121,20))
         mbar.ax.set_title('m/s')

@@ -561,4 +561,35 @@ def cloud_structure(cubes, lat=45, time_slice=-1, fractype='mass'):
     
     ax.set_title('Cloud structure at lat=%s' %((lat-45)*2))
     plt.show()
+    
+
+def y_gradient(cubes,start=0,end=-1,lon1=0,lon2=-1):
+    
+    for cube in cubes:
+        if cube.standard_name == 'air_potential_temperature':
+            theta = cube[start:end,:,:,lon1:lon2].copy()
+        if cube.standard_name == 'air_pressure':
+            pressure = cube[start:end,:,:,lon1:lon2].copy()
+            
+    p0 = iris.coords.AuxCoord(100000.0, long_name='reference_pressure', units='Pa')
+    p0.convert_units(pressure.units)
+    temperature = theta*((pressure/p0)**(287.05/1005)) # R and cp in J/kgK for 300K
+    # Calculate absolute temperature from potential temperature
+    
+    zm_temp = temperature.collapsed('longitude',iris.analysis.MEAN)
+    tm_temp = temperature.collapsed('time',iris.analysis.MEAN)
+    zmtm = temperature.collapsed(['longitude','time'],iris.analysis.MEAN)
+    
+    zmtm = zmtm.data
+    
+    heights = np.round(theta.coord('level_height').points*1e-03,0)
+    lats = np.round(theta.coord('latitude').points,0)
+    
+    plt.contourf(lats,heights,zmtm,cmap=brewer_redblu)
+    plt.title('Air temperature [K], zonal mean')
+    plt.xlabel('Latitude [degrees]')
+    plt.ylabel('Height [km]')
+    plt.colorbar()
+    plt.show()
+    
         
