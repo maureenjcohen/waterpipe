@@ -11,6 +11,7 @@ import matplotlib.cm as mpl_cm
 from iris.coord_systems import GeogCS
 import numpy as np
 import scipy as sp
+import windspharm
 # Import packages
 
 
@@ -78,6 +79,61 @@ def wavelets(cubes, radius=7160000, scales=512, wavelet='mexh', x=(106,110), y=(
     plt.ylabel('Period [days]')
     plt.show()
     
+
+
+def eddy_wavelets(cubes, radius=7160000, start=500, end=600, scales=512, wavelet='mexh', lon=0, lat=60, level=8, sampling=1):
+
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube[start:end,:,:,:].copy()
+        if cube.standard_name == 'y_wind':
+            y_wind = cube[start:end,:,:,:].copy()
+        
+    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+    heights = np.round(x_wind.coord('level_height').points*1e-03,2)
+    lats = x_wind.coord('latitude').points
+    lons = x_wind.coord('longitude').points
+
+    x_wind.coord('latitude').coord_system = GeogCS(radius)
+    x_wind.coord('longitude').coord_system = GeogCS(radius)
+    y_wind.coord('latitude').coord_system = GeogCS(radius)
+    y_wind.coord('longitude').coord_system = GeogCS(radius)
+    run_length = x_wind.shape[0]
+    time = np.arange(0,run_length)*sampling
+    
+    winds = windspharm.iris.VectorWind(x_wind[:,level,:,:],y_wind[:,level,:,:])
+    # Create a VectorWind data object from the x and y wind cubes
+    uchi,vchi,upsi,vpsi = winds.helmholtz(truncation=21)
+    # Calculate the Helmholtz decomposition. Truncation is set to 21 because 
+    # this is what Hammond and Lewis 2021 used.
+    
+    zonal_upsi = upsi.collapsed('longitude', iris.analysis.MEAN)
+    zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
+    # Calculate zonal means of the x and y components of the rotational component
+    eddy_upsi = upsi - zonal_upsi
+    eddy_vpsi = vpsi - zonal_vpsi
+    magnitude = np.sqrt(eddy_upsi.data**2 + eddy_vpsi.data**2)
+
+    data = magnitude[:,lat,lon].data
+    coeffs, freqs = pywt.cwt(data, np.arange(1,scales), wavelet, 1./run_length)
+
+    power = (abs(coeffs))**2
+    # Find power from coefficients
+    period = (1./freqs)*run_length*sampling
+    # Gives period in days
+
+    plt.plot(np.arange(0,run_length)*sampling, data, linestyle='-', color='b')
+    plt.title('Eddy rotational component at lat=%s, lon=%s, h=%s km' %(lats[lat], lons[lon], heights[level]))
+    plt.xlabel('Time [days]') 
+    plt.ylabel('Velocity [m s-1]')
+    plt.show()
+    
+    plt.pcolormesh(time, period, power, cmap=magma)
+    plt.title('Scaleogram for lat=%s, long=%s, h=%s km' %(lats[lat], lons[lon], heights[level]))
+    plt.xlabel('Time [days]')
+    plt.ylabel('Period [days]')
+    plt.show()
+
 
 
 def wavelets2d(cubes, scales=512, wavelet='mexh', start=0, end=480, x=108, y=45, level=47, sampling=0.25):

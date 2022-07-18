@@ -10,12 +10,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as mpl_cm
 import scipy as sp
+from iris.coord_systems import GeogCS
 
 
 plasma = mpl_cm.get_cmap('plasma')
 
 
-def wave_spectrum(cubes, n=3, start=0, end=5, level=8):  
+def wave_spectrum(cubes, radius=5797818, n=3, start=0, end=5, level=8):  
     
     """ Uses the windspharm package to perform a Helmholtz decomposition on an Iris cube
         Helmholtz composition splits the vector field into its divergent and rotational components
@@ -37,6 +38,11 @@ def wave_spectrum(cubes, n=3, start=0, end=5, level=8):
             
     # Select the cubes we want from the cube list
  
+    x_wind.coord('latitude').coord_system = GeogCS(radius)
+    x_wind.coord('longitude').coord_system = GeogCS(radius)
+    y_wind.coord('latitude').coord_system = GeogCS(radius)
+    y_wind.coord('longitude').coord_system = GeogCS(radius)
+
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
     
     x_wind = x_wind.collapsed('time', iris.analysis.MEAN)
@@ -68,6 +74,7 @@ def wave_spectrum(cubes, n=3, start=0, end=5, level=8):
     xfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[1],d=1./144))
     j, i = yfreqs > 0, xfreqs > 0
     psd = np.abs(fft2)**2
+    psd[45,72] = 0
     # Subtract zonal means from the original cubes to get the x and y eddy rotational components
 
     X,Y = np.meshgrid(np.arange(-72,72), np.arange(-45,45))
@@ -86,6 +93,7 @@ def wave_spectrum(cubes, n=3, start=0, end=5, level=8):
     
     fig2,ax2 = plt.subplots(figsize = (10,5))
     im = ax2.contourf(xfreqs[73:78],yfreqs[46:51],psd[46:51,73:78], cmap=plasma)
+    # im = ax2.contourf(xfreqs,yfreqs,psd, cmap=plasma)
     plt.title('Power spectrum of eddy rotational wind magnitude, days %s to %s' %(start,end))
     plt.xlabel('Zonal wavenumber')
     plt.ylabel('Meridional wavenumber')

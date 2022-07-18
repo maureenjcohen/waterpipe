@@ -26,7 +26,7 @@ plasma = mpl_cm.get_cmap('plasma')
 
 
 @gif.frame
-def cloud_frame(cubes, time_slice=-1, nlat=90, nlon=144, nlev=38, level=8, meaning=5, n=4, cloudtype='ice', fractype='mass'):
+def cloud_frame(cubes, time_slice=-1, nlat=90, nlon=144, nlev=38, level=8, meaning=1, n=4, cloudtype='ice', fractype='mass'):
 
     for cube in cubes:
         if cube.standard_name == 'x_wind':
@@ -83,10 +83,10 @@ def cloud_frame(cubes, time_slice=-1, nlat=90, nlon=144, nlev=38, level=8, meani
     
 frames = []
 for i in range(100,130):
-    frame = cloud_frame(fartrap,time_slice=i)
+    frame = cloud_frame(trap,time_slice=i)
     frames.append(frame)
 
-gif.save(frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_trapfar_80km/level8ice.gif', duration = 29, unit = 's', between='startend')
+gif.save(frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_trapcontrol_80km/level8ice2.gif', duration = 500)
 
 
 @gif.frame
@@ -138,3 +138,43 @@ for i in range(270,370):
     ps_frames.append(ps_frame)
 
 gif.save(ps_frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_trapclose_80km/pslevel8_zoom.gif', duration = 50, unit = 's', between='startend')
+
+
+@gif.frame
+def wind_frame(cubes, time_slice=-1, nlat=90, nlon=144, nlev=38, level=8, meaning=1, n=4):
+
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube.copy()
+        if cube.standard_name == 'y_wind':
+            y_wind = cube.copy() 
+        
+    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+    heights = np.round(x_wind.coord('level_height').points*1e-03,2)
+            
+    meaned_x = np.mean(x_wind.data.reshape(-1,meaning,nlev,nlat,nlon),axis=1)
+    meaned_y = np.mean(y_wind.data.reshape(-1,meaning,nlev,nlat,nlon),axis=1)
+
+    X,Y = np.meshgrid(np.arange(0,nlon), np.arange(0,nlat))   
+        
+    fig, ax = plt.subplots(figsize=(10,5))
+    
+    plt.quiver(X[::n,::n],Y[::n,::n], np.roll(meaned_x[time_slice,level,::n,::n],int(nlon/(2*n)),axis=1), 
+                np.roll(meaned_y[time_slice, level,::n,::n],int(nlon/(2*n)),axis=1),scale_units='xy',scale=5)
+
+    plt.title('Horizontal wind, days %s to %s, h=%s km' %(time_slice*meaning-meaning,time_slice*meaning, heights[level]))
+    plt.xticks((0,12,24,36,48,60,72,84,96,108,120,132,144),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
+    plt.yticks((90,75,60,45,30,15,0),('90S','60S','30S','0','30N','60N','90N'))   
+    # plt.xticks((0,128,256,384,512),('180W','90W','0','90E','180E'))
+    # plt.yticks((256,128,0),('90S','0','90N')) 
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+        
+    # ax2.quiverkey(q1, X=0.9, Y=1.05, U=10, label='10 m/s', labelpos='E', coordinates='axes')
+    
+frames = []
+for i in range(100,220):
+    frame = wind_frame(dry,time_slice=i)
+    frames.append(frame)
+
+gif.save(frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_trapdry_80km/level8_nomean_long.gif', duration=500)

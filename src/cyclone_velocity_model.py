@@ -16,7 +16,8 @@ from matplotlib.colors import TwoSlopeNorm
 
 
 
-redblu = mpl_cm.get_cmap('brewer_RdBu_11')
+redblu = mpl_cm.get_cmap('RdBu')
+plasma = mpl_cm.get_cmap('plasma')
 
 
 
@@ -49,9 +50,9 @@ def model_vel(cubes,start=500,end=600,level=8,omega=7.93e-06,radius=7160000,lat=
     xfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[2],d=1./144))
     psd = np.abs(fft2)**2
     
-    quadrant = psd[:,46:51,73:78]
-    xfreqs = xfreqs[73:78]
-    yfreqs = yfreqs[46:51]
+    quadrant = psd[:,45:51,72:78]
+    xfreqs = xfreqs[72:78]
+    yfreqs = yfreqs[45:51]
 
     x_wavenumbers = []
     y_wavenumbers = []
@@ -79,14 +80,24 @@ def model_vel(cubes,start=500,end=600,level=8,omega=7.93e-06,radius=7160000,lat=
     y_num = 2*np.pi/lambda_y
     
     c_phase = (zmzw - (beta/(x_num**2+y_num**2)))
-    c_group = (zmzw + (beta*(x_num**2-y_num**2))/((x_num**2+y_num**2)**2))
+    # c_group = (zmzw + (beta*(x_num**2-y_num**2))/((x_num**2+y_num**2)**2))
     
-    distance = np.cumsum(c_phase*60*60*24)*10e-03 # Convert m/s to m/day = distance travelled in a day
-    deg_dist = (distance/circum)
+    # distance = np.cumsum(c_phase*60*60*24)*10e-03 # Convert m/s to m/day = distance travelled in a day
+    # deg_dist = (distance/circum)
     
-    plt.plot(x_wavenumbers,color='r',label='Zonal')
-    plt.plot(y_wavenumbers,color='b',label='Meridional')
-    plt.xlabel('Time [days]')
+    
+    fig, ax1 = plt.subplots()
+    ax1.plot(x_wavenumbers,color='r',label='Zonal')
+    # ax1.plot(y_wavenumbers,color='b',label='Meridional')
+
+    ax1.set_xlabel('Time [days]')
+    ax1.set_ylabel('Wavenumber')
+    plt.legend()
+    
+    ax2 = ax1.twinx()
+    ax2.plot(zmzw,color='k',label='ZMZW')
+    ax2.set_ylabel('m/s')
+    
     plt.legend()
     plt.show()
     
@@ -98,11 +109,11 @@ def model_vel(cubes,start=500,end=600,level=8,omega=7.93e-06,radius=7160000,lat=
     plt.legend()
     plt.show()
     
-    plt.plot(distance)
-    plt.title('Path travelled by cyclone at %sN'%(lat))
-    plt.xlabel('Time [days]')
-    plt.ylabel('Cumulative distance [km]')
-    plt.show()
+    # plt.plot(distance)
+    # plt.title('Path travelled by cyclone at %sN'%(lat))
+    # plt.xlabel('Time [days]')
+    # plt.ylabel('Cumulative distance [km]')
+    # plt.show()
     
 
 def hbarotropic(cubes,start=500,end=600,level=8,omega=7.93e-06,radius=716000):
@@ -198,4 +209,66 @@ def hbarotropic(cubes,start=500,end=600,level=8,omega=7.93e-06,radius=716000):
     plt.show()    
     
     
+def resonance(cubes,start=0,end=-1,level=8):
+
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube[start:end,:,:,:].copy()
+        if cube.standard_name == 'y_wind':
+            y_wind = cube[start:end,:,:,:].copy()
+        if cube.standard_name == 'surface_net_downward_shortwave_flux':
+            heat = cube[start:end,:,:,:].copy()
+
+    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+    km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
     
+    winds = windspharm.iris.VectorWind(x_wind[:,level,:,:],y_wind[:,level,:,:])
+    # Create a VectorWind data object from the x and y wind cubes
+    uchi,vchi,upsi,vpsi = winds.helmholtz(truncation=21)
+    # Calculate the Helmholtz decomposition. Truncation is set to 21 because 
+    # this is what Hammond and Lewis 2021 used.
+    
+    zonal_upsi = upsi.collapsed('longitude', iris.analysis.MEAN)
+    zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
+    # Calculate zonal means of the x and y components of the rotational component
+    eddy_upsi = upsi - zonal_upsi
+    eddy_vpsi = vpsi - zonal_vpsi
+    magnitude = np.sqrt(eddy_upsi.data**2 + eddy_vpsi.data**2)
+    
+    fft2 = sp.fft.fftshift(sp.fftpack.fft2(sp.fft.ifftshift(magnitude)))
+    yfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[1],d=1./90))
+    xfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[2],d=1./144))
+    psd = np.abs(fft2)**2
+
+    one_zero = psd[:,45,73]
+    print(xfreqs[73],yfreqs[45])
+    two_one = psd[:,46,74]
+    two_two = psd[:,47,74]
+    three_two = psd[:,47,75]
+    one_one = psd[:,46,73]
+    wave_sum = one_zero + two_one + two_two + three_two + one_one
+
+    lats = heat.coord('latitude')
+    lons = heat.coord('longitude')
+
+    if lats.bounds == None:
+        heat.coord('latitude').guess_bounds()
+    if lons.bounds == None:
+        heat.coord('longitude').guess_bounds()
+
+    grid_areas = iris.analysis.cartography.area_weights(heat)
+    global_mean = heat.collapsed(['latitude','longitude'],iris.analysis.MEAN, weights=grid_areas)
+
+    fig, ax1 = plt.subplots()
+    ax1.set_xlabel('Time [days]')
+    ax1.set_ylabel('Heat [W/m2]')
+    ax1.plot(global_mean.data,color='k',label='Mean heating')
+
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('PSD')
+    ax2.plot(one_zero,color='r',label='1-0 wave')
+    ax2.plot(wave_sum,color='b',label='Wave sum')
+    plt.legend()
+
+    plt.title('Global mean heating and PSD of 1-0 Rossby wave at h=%s km' %km_heights[level])
+    plt.show()

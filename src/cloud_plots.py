@@ -425,7 +425,7 @@ def composites2D(cubes, start=0, end=10, nlev=38, level=25, n=3, meaning=7):
         plt.show()
         
         
-def composites_levels(cubes, start=1,end=20, nlat=90, nlon=144, nlev=38, level=25, meaning=5, n=4, cloudtype='ice', fractype='mass'):
+def composites_levels(cubes, start=1,end=20, nlat=90, nlon=144, nlev=38, level=25, meaning=1, n=4, cloudtype='ice', fractype='mass'):
 
     for cube in cubes:
         if cube.standard_name == 'x_wind':
@@ -462,15 +462,15 @@ def composites_levels(cubes, start=1,end=20, nlat=90, nlon=144, nlev=38, level=2
     for time_slice in range(start, end+1):
         
         fig, ax = plt.subplots(figsize=(10,5))
-        plt.imshow(np.roll(meaned_cloud[time_slice,level, :,:],int(nlon/2),axis=1), cmap=brewer_bg)
-        cbar = plt.colorbar()
+        # plt.imshow(np.roll(meaned_cloud[time_slice,level, :,:],int(nlon/2),axis=1), cmap=brewer_bg)
+        # cbar = plt.colorbar()
         
         # if fractype=='mass':
         #     cbar.ax.set_title('$10^{-4}$kg/kg')
     
         
         plt.quiver(X[::n,::n],Y[::n,::n], np.roll(meaned_x[time_slice,level,::n,::n],int(nlon/(2*n)),axis=1), 
-                    np.roll(-meaned_y[time_slice, level,::n,::n],int(nlon/(2*n)),axis=1),scale_units='xy',scale=5)
+                    np.roll(meaned_y[time_slice, level,::n,::n],int(nlon/(2*n)),axis=1),scale_units='xy',scale=5)
 
         plt.title('%s and horizontal wind, days %s to %s, h=%s km' %(titleterm, time_slice*meaning-meaning,time_slice*meaning, heights[level]))
         plt.xticks((0,12,24,36,48,60,72,84,96,108,120,132,144),('180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'))
