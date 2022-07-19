@@ -248,21 +248,21 @@ def resonance(cubes,start=0,end=-1,level=8):
     one_one = psd[:,46,73]
     wave_sum = one_zero + two_one + two_two + three_two + one_one
 
-    lats = heat.coord('latitude')
-    lons = heat.coord('longitude')
+    lats = x_wind.coord('latitude')
+    lons = x_wind.coord('longitude')
 
     if lats.bounds == None:
-        heat.coord('latitude').guess_bounds()
+        x_wind.coord('latitude').guess_bounds()
     if lons.bounds == None:
-        heat.coord('longitude').guess_bounds()
+        x_wind.coord('longitude').guess_bounds()
 
-    grid_areas = iris.analysis.cartography.area_weights(heat)
-    global_mean = heat.collapsed(['latitude','longitude'],iris.analysis.MEAN, weights=grid_areas)
+    grid_areas = iris.analysis.cartography.area_weights(x_wind[:,level,:,:])
+    global_mean = x_wind[:,level,:,:].collapsed(['latitude','longitude'],iris.analysis.MEAN, weights=grid_areas)
 
     fig, ax1 = plt.subplots()
     ax1.set_xlabel('Time [days]')
-    ax1.set_ylabel('Heat [W/m2]')
-    ax1.plot(global_mean.data,color='k',label='Mean heating')
+    ax1.set_ylabel('Wind [m/s]')
+    ax1.plot(global_mean.data,color='k',label='Wind')
 
     ax2 = ax1.twinx()
     ax2.set_ylabel('PSD')
@@ -270,5 +270,5 @@ def resonance(cubes,start=0,end=-1,level=8):
     ax2.plot(wave_sum,color='b',label='Wave sum')
     plt.legend()
 
-    plt.title('Global mean heating and PSD of 1-0 Rossby wave at h=%s km' %km_heights[level])
+    plt.title('Global mean zonal wind and PSD of 1-0 Rossby wave at h=%s km' %km_heights[level])
     plt.show()

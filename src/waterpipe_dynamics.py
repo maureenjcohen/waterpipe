@@ -310,11 +310,11 @@ def plot_zwind(cubes, time_slice=-1):
     plt.show()
     
 
-def plot_hovmoellerz(cubes):
+def plot_hovmoellerz(cubes, start=500, end=600):
     
     for cube in cubes:
         if cube.standard_name == 'upward_air_velocity':
-            z_wind = cube.copy()
+            z_wind = cube[start:end,:,:,:].copy()
     
     height = z_wind.shape[1]
     run_length = z_wind.shape[0]
@@ -326,7 +326,7 @@ def plot_hovmoellerz(cubes):
     if longs.bounds == None:
         z_wind.coord('longitude').guess_bounds()
         
-    dayside = z_wind.extract(iris.Constraint(longitude=lambda v: 270 < v <= 359 or 0 <= v <= 90, latitude=lambda v: -2 <= v <= 2))
+    dayside = z_wind.extract(iris.Constraint(longitude=lambda v: 330 < v <= 359 or 0 <= v <= 30, latitude=lambda v: -30 <= v <= 30))
     nightside = z_wind.extract(iris.Constraint(longitude=lambda v: 90 < v <= 270, latitude=lambda v: -2 <= v <= 2))
     day_grid = iris.analysis.cartography.area_weights(dayside)
     night_grid = iris.analysis.cartography.area_weights(nightside)
@@ -335,16 +335,16 @@ def plot_hovmoellerz(cubes):
     dayside_mean = dayside.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=day_grid)
     nightside_mean = nightside.collapsed(['latitude', 'longitude'], iris.analysis.MEAN, weights=night_grid)
     global_mean = z_wind.collapsed(['latitude','longitude'], iris.analysis.MEAN, weights=global_grid)
-    months = DimCoord((np.arange(0,run_length)), standard_name='time', units='months')
+    # months = DimCoord((np.arange(0,run_length)), standard_name='time', units='months')
 
-    iplt.contourf(dayside_mean, brewer_reds.N, cmap=brewer_reds)
+    plt.contourf(dayside_mean.data, brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Dayside Mean Equatorial Z-Wind [m s-1]')
     plt.xlabel('Time')
     plt.ylabel('Height [m]')
     plt.colorbar(pad=0.1)
     plt.show()
     
-    iplt.contourf(nightside_mean, brewer_reds.N, cmap=brewer_reds)
+    plt.contourf(nightside_mean.data, brewer_redblu.N, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
     plt.title('Nightside Mean Equatorial Z-Wind [m s-1]')
     plt.xlabel('Time')
     plt.ylabel('Height [m]')
