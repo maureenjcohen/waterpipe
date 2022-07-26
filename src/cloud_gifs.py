@@ -173,8 +173,8 @@ def wind_frame(cubes, time_slice=-1, nlat=90, nlon=144, nlev=38, level=8, meanin
     # ax2.quiverkey(q1, X=0.9, Y=1.05, U=10, label='10 m/s', labelpos='E', coordinates='axes')
     
 frames = []
-for i in range(100,220):
-    frame = wind_frame(dry,time_slice=i)
+for i in range(300,400):
+    frame = wind_frame(trap,time_slice=i)
     frames.append(frame)
 
-gif.save(frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_trapdry_80km/level8_nomean_long.gif', duration=500)
+gif.save(frames,'/exports/csce/datastore/geos/users/s1144983/um_data/cloudproject/gifs_trapcontrol_80km/level8_300to400.gif', duration=500)
