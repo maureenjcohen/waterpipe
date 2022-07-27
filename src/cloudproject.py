@@ -286,3 +286,122 @@ def vertical_profile(cubes,start=500,end=600,level=8,top_level=30,select='absolu
         pass
 
     plt.show() 
+
+def swresonance(cubes,start=0,end=-1,level=0):
+
+    for cube in cubes:
+        if cube.standard_name == 'x_wind':
+            x_wind = cube[start:end,:,:,:].copy()
+        if cube.standard_name == 'y_wind':
+            y_wind = cube[start:end,:,:,:].copy()
+        if cube.standard_name == 'surface_net_downward_shortwave_flux':
+            heat = cube[start:end,:,:,:].copy()
+
+    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+    km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
+    
+    winds = windspharm.iris.VectorWind(x_wind[:,level,:,:],y_wind[:,level,:,:])
+    # Create a VectorWind data object from the x and y wind cubes
+    uchi,vchi,upsi,vpsi = winds.helmholtz(truncation=21)
+    # Calculate the Helmholtz decomposition. Truncation is set to 21 because 
+    # this is what Hammond and Lewis 2021 used.
+    
+    zonal_upsi = upsi.collapsed('longitude', iris.analysis.MEAN)
+    zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
+    # Calculate zonal means of the x and y components of the rotational component
+    eddy_upsi = upsi - zonal_upsi
+    eddy_vpsi = vpsi - zonal_vpsi
+    magnitude = np.sqrt(eddy_upsi.data**2 + eddy_vpsi.data**2)
+    
+    fft2 = sp.fft.fftshift(sp.fftpack.fft2(sp.fft.ifftshift(magnitude)))
+    yfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[1],d=1./90))
+    xfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[2],d=1./144))
+    psd = np.abs(fft2)**2
+
+    one_zero = psd[:,45,73]
+    print(xfreqs[73],yfreqs[45])
+    two_one = psd[:,46,74]
+    two_two = psd[:,47,74]
+    three_two = psd[:,47,75]
+    one_one = psd[:,46,73]
+    wave_sum = one_zero + two_one + two_two + three_two + one_one
+
+    lats = x_wind.coord('latitude')
+    lons = x_wind.coord('longitude')
+
+    if lats.bounds == None:
+        x_wind.coord('latitude').guess_bounds()
+    if lons.bounds == None:
+        x_wind.coord('longitude').guess_bounds()
+
+    grid_areas = iris.analysis.cartography.area_weights(x_wind[:,level,:,:])
+    global_mean = x_wind[:,level,:,:].collapsed(['latitude','longitude'],iris.analysis.MEAN, weights=grid_areas)
+
+    fig, ax1 = plt.subplots()
+    ax1.set_xlabel('Time [days]')
+    ax1.set_ylabel('Wind [m/s]')
+    ax1.plot(global_mean.data,color='k',label='Wind')
+
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('PSD')
+    ax2.plot(one_zero,color='r',label='1-0 wave')
+    ax2.plot(wave_sum,color='b',label='Wave sum')
+    plt.legend()
+
+    plt.title('Global mean zonal wind and PSD of 1-0 Rossby wave at h=%s km' %km_heights[level])
+
+    if save == 'yes':
+        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/swresonance.eps', format='eps')
+    else:
+        pass
+    plt.show()
+
+def cloud_bubble(cubes,lat=45,lon=72,time_slice=-1,save='no'):
+    
+    for cube in cubes:
+        if cube.standard_name == 'mass_fraction_of_cloud_ice_in_air':
+            ice = cube[time_slice,:,:,:].copy()
+        if cube.standard_name == 'mass_fraction_of_cloud_liquid_water_in_air':
+            liq = cube[time_slice,:,:,:].copy()
+            
+    heights = np.round(ice.coord('level_height').points*1e-03,0)
+    lons = ice.coord('longitude').points
+    lats = ice.coord('latitude').points
+    total_cloud = ice + liq
+    
+    if len(heights) > 39:
+        final_height = 43
+    else:
+        final_height = -1
+    
+    fig1, ax1 = plt.subplots(figsize=(10,5))
+    plota = ax1.contourf(np.roll(lons,72), heights[:final_height], total_cloud[:final_height,lat,:].data*10**4, cmap='Blues')
+    ax1.set_title('Total cloud at latitude %s' %lats[lat])
+    ax1.set_xlabel('Longitude [degrees]')
+    ax1.set_xticks([0,30,60,90,120,150,180,210,240,270,300,330,360], ['180W','150W','120W','90W','60W','30W','0','30E','60E','90E','120E','150E','180E'])
+    ax1.set_ylabel('Height [km]')
+    cba = plt.colorbar(plota)
+    cba.ax.set_title('$10^{-4}$ kg/kg', size=10)
+    cba.set_label('Total cloud', size=15)
+    if save == 'yes':
+        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/cloud_bubble_lat_%s.eps' %lats[lat], format='eps')
+    else:
+        pass
+    plt.show()
+    
+    fig2, ax2 = plt.subplots(figsize=(5,5))
+    plotb = ax2.contourf(lats, heights[:final_height], total_cloud[:final_height,:,lon].data*10**4, cmap='Blues')
+    ax2.set_title('Total cloud at latitude %s' %lats[lat])
+    ax2.set_xlabel('Latitude [degrees]')
+    ax2.set_xticks([0,15,30,45,60,75,90], ['90S','30S','60S','0','30N','60N','90N'])
+    ax2.set_ylabel('Height [km]')
+    cbb = plt.colorbar(plotb)
+    cbb.ax.set_title('$10^{-4}$ kg/kg', size=10)
+    cbb.set_label('Total cloud', size=15)
+
+    if save == 'yes':
+        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/cloud_bubble_lon_%s.eps' %lons[lon], format='eps')
+    else:
+        pass
+    plt.show()
+    
