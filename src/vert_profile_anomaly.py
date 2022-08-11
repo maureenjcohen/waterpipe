@@ -53,7 +53,7 @@ def vert_profile(cubes,start=500,end=600,level=8):
     plt.colorbar(pad=0.1)
     plt.show()
 
-def temp_profile(cubes,start=500,end=600,level=8, select='absolute'):
+def temp_profile(cubes,start=0,end=100,level=8, select='absolute'):
 
     for cube in cubes:
         if cube.standard_name == 'air_potential_temperature':
