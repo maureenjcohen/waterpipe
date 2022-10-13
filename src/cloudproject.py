@@ -26,7 +26,7 @@ hot = mpl_cm.get_cmap('hot')
 heat = mpl_cm.get_cmap('gist_heat')
 brewer_bg = mpl_cm.get_cmap('brewer_PuBu_09')
 
-def climgrid(datalist,nlat=90,nlon=144,nlev=38,level=15,start=500,end=620,ndata=5,n=4,save='no'):
+def climgrid(datalist,nlat=90,nlon=144,nlev=38,level=15,start=0,end=300,ndata=5,n=4,save='no'):
 
     """ Create a full-page grid of plots displaying the vertical temperature profile, zonal
     mean zonal wind, vertical water vapour profile, and surface temp with wind flow vectors for
@@ -117,7 +117,7 @@ def climgrid(datalist,nlat=90,nlon=144,nlev=38,level=15,start=500,end=620,ndata=
 
 
     if save == 'yes':
-        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/climgrid.eps', format='eps')
+        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/climgrid_tight.eps', format='eps',bbox_inches='tight')
     else:
         pass
     
@@ -552,19 +552,34 @@ def cloud_type(cubes, start=0,end=600, long1=36, long2=108, filtering=True,
     total_liq = (liq_east + liq_west)/2
     
     if filtering == True:
+        run_length = total_ice.shape[0]
         fft_ice = sp.fftpack.fft(total_ice)
         psd_ice = np.abs(fft_ice)**2
+        # freqs_ice = sp.fftpack.fftfreq(len(psd_ice), 1./run_length)
         freqs_ice = sp.fftpack.fftfreq(len(psd_ice), 1./1)
+        i = freqs_ice > 0
         lowpass_ice = fft_ice.copy()
         lowpass_ice[np.abs(freqs_ice) > ice_threshold] = 0
         total_ice = np.real(sp.fftpack.ifft(lowpass_ice))
         
         fft_liq = sp.fftpack.fft(total_liq)
         psd_liq = np.abs(fft_liq)**2
+        # freqs_liq = sp.fftpack.fftfreq(len(psd_liq), 1./run_length)
         freqs_liq = sp.fftpack.fftfreq(len(psd_liq), 1./1)
+        j = freqs_liq > 0
         lowpass_liq = fft_liq.copy()
         lowpass_liq[np.abs(freqs_liq) > liq_threshold] = 0
         total_liq = np.real(sp.fftpack.ifft(lowpass_liq))
+        
+        # fig, ax = plt.subplots(1,1,figsize=(8,4))
+        # ax.plot(freqs_ice[i], psd_ice[i],color='r')
+        # ax.plot(freqs_liq[j], psd_liq[j],color='b')
+        # ax.set_xlim(0,150)
+        # ax.set_xlabel('Frequency')
+        # ax.set_ylabel('PSD')
+        # ax.set_title('Periodicity of cloud cover')
+        # print(np.argmax(psd_liq[i]))
+        # print(np.argmax(psd_ice[i]))
     
     fig, ax1 = plt.subplots()
     ax1.set_xlabel('Time [days]')
@@ -593,3 +608,114 @@ def cloud_type(cubes, start=0,end=600, long1=36, long2=108, filtering=True,
     else:
         pass
     plt.show()
+    
+def hovmoeller_rwaves(cubes, start=0,end=100,level=8,lats=(55,85),save='no'):
+
+    for cube in cubes:
+        if cube.standard_name == 'y_wind':
+            y_wind = cube[start:end,level,:,:].copy()
+    
+    time_axis = np.arange(0,y_wind.shape[0])
+    lons = y_wind.coord('longitude').points
+    if y_wind.coord('latitude').bounds == None:
+        y_wind.coord('latitude').guess_bounds()
+    if y_wind.coord('longitude').bounds == None:
+        y_wind.coord('longitude').guess_bounds()
+        
+    lat_band = y_wind.intersection(latitude=(lats[0],lats[1]))
+#    lat_grid = iris.analysis.cartography.area_weights(lat_band)
+    
+    band_mean = lat_band.collapsed('latitude',iris.analysis.MEAN)
+    band_mean = band_mean.data
+    
+    plt.contourf(np.roll(lons, 72), time_axis, np.roll(band_mean, 72, axis=1), cmap=redblu, norm=TwoSlopeNorm(0))
+    plt.title('Mean meridional wind from %s to %s N' %(lats[0],lats[1]))
+    plt.xlabel('Longitude [degrees]')
+    plt.ylabel('Time [days]')
+    cbar = plt.colorbar(pad=0.1)
+    cbar.ax.set_title('m/s')
+    
+    if save == 'yes':
+        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/hov_rwaves%sto%s.eps' %(start,end), format='eps')
+    else:
+        pass
+        
+    plt.show()
+    
+    return
+
+
+def clim_stats(datalist,ndata=5,start=0,end=300):
+
+    names = ['Control ProxB','Warm ProxB','Control TRAP1-e','Warm TRAP1-e','Dry TRAP1-e']
+
+    final_list = []
+    
+    for i in range(ndata):
+        data = datalist[i]
+        name = names[i]
+        for cube in data:
+            if cube.standard_name == 'air_potential_temperature':
+                potential_temp = cube[start:end,:,:,:].copy()
+            if cube.standard_name == 'air_pressure':
+                air_pressure = cube[start:end,:,:,:].copy()
+            if cube.standard_name == 'x_wind':
+                x_wind = cube[start:end,:,:,:].copy()
+            if cube.standard_name == 'y_wind':
+                y_wind = cube[start:end,:,:,:].copy()
+            if cube.standard_name == 'surface_temperature':
+                surface_temp = cube[start:end,:,:].copy()
+            if cube.standard_name == 'specific_humidity' and i < ndata-1:
+                spec_humidity = cube[start:end,:,:,:].copy()
+            elif cube.standard_name == 'specific_humidity' and i == ndata-1: 
+                spec_humidity = cube.copy()*0.0
+        
+        for subcube in potential_temp, air_pressure, x_wind, y_wind, surface_temp, spec_humidity: 
+            if subcube.coord('latitude').bounds == None:
+                subcube.coord('latitude').guess_bounds()
+            if subcube.coord('longitude').bounds == None:
+                subcube.coord('longitude').guess_bounds()
+        
+        
+        p0 = iris.coords.AuxCoord(100000.0, long_name='reference_pressure', units='Pa')
+        p0.convert_units(air_pressure.units)
+        absolute_temp = potential_temp*((air_pressure/p0)**(287.05/1005))
+        abs_grid = iris.analysis.cartography.area_weights(absolute_temp)
+        
+        mean_abs_temp = absolute_temp.collapsed(['longitude','latitude'],iris.analysis.MEAN, weights=abs_grid)
+        mean_abs_temp = np.mean(mean_abs_temp.data)
+        max_abs_temp = np.max(absolute_temp.data)
+        min_abs_temp = np.min(absolute_temp.data)
+        
+        x_grid = iris.analysis.cartography.area_weights(x_wind)
+        mean_x = x_wind.collapsed(['latitude','longitude'],iris.analysis.MEAN,weights=x_grid)
+        mean_x = np.mean(mean_x.data)
+        max_x = np.max(x_wind.data)
+        min_x = np.min(x_wind.data)
+        
+        y_grid = iris.analysis.cartography.area_weights(y_wind)
+        mean_y = x_wind.collapsed(['latitude','longitude'],iris.analysis.MEAN,weights=y_grid)
+        mean_y = np.mean(mean_y.data)
+        max_y = np.max(y_wind.data)
+        min_y = np.min(y_wind.data)
+        
+        spec_grid = iris.analysis.cartography.area_weights(spec_humidity)
+        mean_spec_humid = spec_humidity.collapsed(['latitude','longitude'],iris.analysis.MEAN,weights=spec_grid)
+        mean_spec_humid = np.mean(mean_spec_humid.data)
+        max_spec_humid = np.max(spec_humidity.data)
+        min_spec_humid = np.min(spec_humidity.data)
+        
+        st_grid = iris.analysis.cartography.area_weights(surface_temp)
+        mean_st = surface_temp.collapsed(['latitude','longitude'],iris.analysis.MEAN,weights=st_grid)
+        mean_st = mean_st.data
+        max_st = np.max(surface_temp.data)
+        min_st = np.min(surface_temp.data)
+        
+        output_list = [name, mean_abs_temp, max_abs_temp, min_abs_temp, mean_x, max_x, min_x, 
+        mean_y, max_y, min_y, mean_spec_humid, max_spec_humid, min_spec_humid, mean_st, max_st, min_st]
+        
+        final_list.append(output_list)
+    
+    print(final_list)
+
+    return final_list
