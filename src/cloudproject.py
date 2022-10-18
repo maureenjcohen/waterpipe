@@ -18,7 +18,7 @@ from numpy import unravel_index
 import scipy as sp
 import windspharm
 from iris.analysis import calculus
-
+import pandas as pd
 
 redblu = mpl_cm.get_cmap('coolwarm')
 plasma = mpl_cm.get_cmap('plasma')
@@ -646,14 +646,25 @@ def hovmoeller_rwaves(cubes, start=0,end=100,level=8,lats=(55,85),save='no'):
 
 
 def clim_stats(datalist,ndata=5,start=0,end=300):
+    
+    col_names = ['Name','Mean t anti', 'Max t anti','Min t anti', 
+                 'Mean t sub', 'Max t sub', 'Min t sub',
+                 'Mean ZMZW', 'Max ZMZW', 'Min ZMZW',
+                 'Mean h anti', 'Max h anti', 'Min h anti',
+                 'Mean h sub', 'Max h sub', 'Min h sub', 
+                 'Mean surf t', 'Max surf t', 'Min surf t']
 
-    names = ['Control ProxB','Warm ProxB','Control TRAP1-e','Warm TRAP1-e','Dry TRAP1-e']
-
-    final_list = []
+    stats = pd.DataFrame(columns=col_names)
+    
+    names = ['Control ProxB',
+                'Warm ProxB','Control TRAP1-e','Warm TRAP1-e','Dry TRAP1-e']
+    
     
     for i in range(ndata):
+        
         data = datalist[i]
         name = names[i]
+        
         for cube in data:
             if cube.standard_name == 'air_potential_temperature':
                 potential_temp = cube[start:end,:,:,:].copy()
@@ -669,53 +680,60 @@ def clim_stats(datalist,ndata=5,start=0,end=300):
                 spec_humidity = cube[start:end,:,:,:].copy()
             elif cube.standard_name == 'specific_humidity' and i == ndata-1: 
                 spec_humidity = cube.copy()*0.0
+           
+
+        y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
         
-        for subcube in potential_temp, air_pressure, x_wind, y_wind, surface_temp, spec_humidity: 
-            if subcube.coord('latitude').bounds == None:
-                subcube.coord('latitude').guess_bounds()
-            if subcube.coord('longitude').bounds == None:
-                subcube.coord('longitude').guess_bounds()
-        
+        vertical = [('level_height', x_wind.coord('level_height').points)]
+        potential_temp = potential_temp.regrid(x_wind, iris.analysis.Linear())
+        potential_temp = potential_temp.interpolate(vertical, iris.analysis.Linear())
+        air_pressure = air_pressure.regrid(x_wind, iris.analysis.Linear())
+        air_pressure = air_pressure.interpolate(vertical, iris.analysis.Linear())
+
+        heights = np.round(x_wind.coord('level_height').points*1e-03,0)
+        lats = np.round(x_wind.coord('latitude').points,0)
+        lons = np.round(x_wind.coord('longitude').points,0)
         
         p0 = iris.coords.AuxCoord(100000.0, long_name='reference_pressure', units='Pa')
         p0.convert_units(air_pressure.units)
         absolute_temp = potential_temp*((air_pressure/p0)**(287.05/1005))
-        abs_grid = iris.analysis.cartography.area_weights(absolute_temp)
+        absolute_temp = np.mean(absolute_temp.data,axis=0)
         
-        mean_abs_temp = absolute_temp.collapsed(['longitude','latitude'],iris.analysis.MEAN, weights=abs_grid)
-        mean_abs_temp = np.mean(mean_abs_temp.data)
-        max_abs_temp = np.max(absolute_temp.data)
-        min_abs_temp = np.min(absolute_temp.data)
+        zmzw = x_wind.collapsed('longitude',iris.analysis.MEAN)
+        zmzw = np.mean(zmzw.data,axis=0)
         
-        x_grid = iris.analysis.cartography.area_weights(x_wind)
-        mean_x = x_wind.collapsed(['latitude','longitude'],iris.analysis.MEAN,weights=x_grid)
-        mean_x = np.mean(mean_x.data)
-        max_x = np.max(x_wind.data)
-        min_x = np.min(x_wind.data)
+        spec_humidity = spec_humidity.regrid(x_wind, iris.analysis.Linear())
+        spec_humidity = spec_humidity.interpolate(vertical, iris.analysis.Linear())
+        spec_humidity = np.mean(spec_humidity.data,axis=0)
         
-        y_grid = iris.analysis.cartography.area_weights(y_wind)
-        mean_y = x_wind.collapsed(['latitude','longitude'],iris.analysis.MEAN,weights=y_grid)
-        mean_y = np.mean(mean_y.data)
-        max_y = np.max(y_wind.data)
-        min_y = np.min(y_wind.data)
+        surface_temp = np.mean(surface_temp.data,axis=0)
         
-        spec_grid = iris.analysis.cartography.area_weights(spec_humidity)
-        mean_spec_humid = spec_humidity.collapsed(['latitude','longitude'],iris.analysis.MEAN,weights=spec_grid)
-        mean_spec_humid = np.mean(mean_spec_humid.data)
-        max_spec_humid = np.max(spec_humidity.data)
-        min_spec_humid = np.min(spec_humidity.data)
+        meaned_x = np.mean(x_wind.data,axis=0)
+        meaned_y = np.mean(y_wind.data,axis=0)
         
-        st_grid = iris.analysis.cartography.area_weights(surface_temp)
-        mean_st = surface_temp.collapsed(['latitude','longitude'],iris.analysis.MEAN,weights=st_grid)
-        mean_st = mean_st.data
-        max_st = np.max(surface_temp.data)
-        min_st = np.min(surface_temp.data)
+        sub_temp = absolute_temp[:,45,0]
+        anti_temp = absolute_temp[:,45,72]
+        sub_hum = spec_humidity[:,45,0]
+        anti_hum = spec_humidity[:,45,72]
         
-        output_list = [name, mean_abs_temp, max_abs_temp, min_abs_temp, mean_x, max_x, min_x, 
-        mean_y, max_y, min_y, mean_spec_humid, max_spec_humid, min_spec_humid, mean_st, max_st, min_st]
+        zmzw_mean, zmzw_max, zmzw_min = np.mean(zmzw), np.max(zmzw), np.min(zmzw)
+        st_mean, st_max, st_min = np.mean(surface_temp), np.max(surface_temp), np.min(surface_temp)
         
-        final_list.append(output_list)
-    
-    print(final_list)
+        values = [name, np.mean(anti_temp), np.max(anti_temp), np.min(anti_temp),
+                  np.mean(sub_temp), np.max(sub_temp), np.min(sub_temp),
+                  zmzw_mean, zmzw_max, zmzw_min,
+                  np.mean(anti_hum), np.max(anti_hum), np.min(anti_hum),
+                  np.mean(sub_hum), np.max(sub_hum), np.min(sub_hum),
+                  st_mean, st_max, st_min]
+        
+        row = pd.DataFrame(data=values)
+        print(row)
+        
+        stats.loc[len(stats.index)] = values
+        
 
-    return final_list
+    print(stats)
+    stats.to_csv('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/clim_stats.csv')
+        
+        
+    return 
