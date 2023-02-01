@@ -105,6 +105,8 @@ def plot_hovmoellerx(cubes, radius=7160000, time='days'):
         'longitude', iris.analysis.MEAN)
     nightside_zonal_mean = nightside_full.collapsed(
         'longitude', iris.analysis.MEAN)
+    
+    colorbar_levs = np.arange(-120, 121, 20)
 
     for cube in (dayside_mean, nightside_mean):
         if cube == dayside_mean:
@@ -112,7 +114,7 @@ def plot_hovmoellerx(cubes, radius=7160000, time='days'):
         else:
             side = 'Nightside'
         plt.contourf(np.arange(0, run_length)*0.25, np.array(heights), cube.data.T,
-                     levels=np.arange(-120, 121, 20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+                     levels=colorbar_levs, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
         plt.title('%s Mean Zonal Equatorial Wind' % (side))
         plt.xlabel('Time [%s]' % (time))
         plt.ylabel('Height [km]')
@@ -128,7 +130,7 @@ def plot_hovmoellerx(cubes, radius=7160000, time='days'):
         else:
             side = 'Nightside'
         plt.contourf(np.arange(0, run_length)*0.25, np.arange(-45, 45),
-                     cube[:, 47, :].data.T, np.arange(-120, 121, 20), cmap=brewer_redblu, norm=TwoSlopeNorm(0))
+                     cube[:, 47, :].data.T, levels=colorbar_levs, cmap=brewer_redblu, norm=TwoSlopeNorm(0))
         plt.title('%s Mean Zonal Wind at 41 km' % (side))
         plt.xlabel('Time [%s]' % (time))
         plt.ylabel('Latitude')

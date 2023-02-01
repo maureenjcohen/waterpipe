@@ -189,6 +189,7 @@ def plot_streamfunction(cubes, level=14, time_slice=-1, omega=0.64617667):
     
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
     heights = np.round(x_wind.coord('level_height').points,0)
+    print(heights)
 
     wind = windspharm.iris.VectorWind(x_wind, y_wind)
     streamfunction, velpotential = wind.sfvp()

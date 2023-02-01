@@ -209,7 +209,7 @@ def composite(cubes, time_slice=500, nlat=90, nlon=144, nlev=38, level=8, n=4, c
             pass            
         plt.show()
 
-def rwave_velocity(cubes,start=500,end=600,nlat=90,nlon=144,level=8,omega=1.19e-05,radius=5797818,lat=55,save='no'):
+def rwave_velocity(datalist,start=500,end=600,nlat=90,nlon=144,level=8,omega=1.19e-05,radius=5797818,lat=73,save='no'):
 
     """ This function calculates the Rossby wave phase speed (including zonal wind) over time.
 
@@ -222,70 +222,323 @@ def rwave_velocity(cubes,start=500,end=600,nlat=90,nlon=144,level=8,omega=1.19e-
 
     At certain latitudes, the phase velocity alternates between positive and negative. This is the region
     where the cyclonic structure appears to travel back and forth periodically. """
-
-    for cube in cubes:
-        if cube.standard_name == 'x_wind':
-            x_wind = cube[start:end,:,:,:].copy()
-        if cube.standard_name == 'y_wind':
-            y_wind = cube[start:end,:,:,:].copy()
+    
+    cphase_list = []
+    names = ['Control TRAP-1e', 'Dry TRAP-1e']
+    
+    for cubes in datalist:
+        for cube in cubes:
+            if cube.standard_name == 'x_wind':
+                x_wind = cube[start:end,:,:,:].copy()
+            if cube.standard_name == 'y_wind':
+                y_wind = cube[start:end,:,:,:].copy()
+            
+        y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+        km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
         
-    y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
-    km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
+        winds = windspharm.iris.VectorWind(x_wind[:,level,:,:],y_wind[:,level,:,:])
+        uchi,vchi,upsi,vpsi = winds.helmholtz(truncation=21)
     
-    winds = windspharm.iris.VectorWind(x_wind[:,level,:,:],y_wind[:,level,:,:])
-    uchi,vchi,upsi,vpsi = winds.helmholtz(truncation=21)
-
-    
-    zonal_upsi = upsi.collapsed('longitude', iris.analysis.MEAN)
-    zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
-    eddy_upsi = upsi - zonal_upsi
-    eddy_vpsi = vpsi - zonal_vpsi
-    magnitude = np.sqrt(eddy_upsi.data**2 + eddy_vpsi.data**2)
-    
-    fft2 = sp.fft.fftshift(sp.fftpack.fft2(sp.fft.ifftshift(magnitude)))
-    yfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[1],d=1./nlat))
-    xfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[2],d=1./nlon))
-    psd = np.abs(fft2)**2
-    
-    quadrant = psd[:,45:51,72:78] # Select positive zonal and meridional wavenumbers <= 5 
-    xfreqs = xfreqs[72:78] # Select corresponding x- and y-frequencies
-    yfreqs = yfreqs[45:51]
-
-    x_wavenumbers = []
-    y_wavenumbers = []
-    for time in range(0,psd.shape[0]):
-        peak = unravel_index(quadrant[time,:,:].argmax(), quadrant[time,:,:].shape)
-        x_wavenumbers.append(peak[1])
-        y_wavenumbers.append(peak[0])
         
-    x_wavenumbers, y_wavenumbers = np.array(x_wavenumbers)+1, np.array(y_wavenumbers)+1
-    
-    zmzw_lat = lat 
-    lat = np.abs(lat-45)*2 # Convert input row number to latitude in degrees north
-    zmzw = x_wind[:,level,zmzw_lat].collapsed('longitude',iris.analysis.MEAN)
-    zmzw = zmzw.data
+        zonal_upsi = upsi.collapsed('longitude', iris.analysis.MEAN)
+        zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
+        eddy_upsi = upsi - zonal_upsi
+        eddy_vpsi = vpsi - zonal_vpsi
+        magnitude = np.sqrt(eddy_upsi.data**2 + eddy_vpsi.data**2)
         
-    lat_rad = lat*(np.pi/180) # Convert input latitude to radians
-    beta = 2*omega*np.cos(lat_rad)/radius # Beta factor    
-    circum = 2*np.pi*radius*np.cos(lat_rad) # Circumference in meters at input latitude    
-    lambda_x = circum/x_wavenumbers # Wavelength in x-direction at input latitude
-    x_num = 2*np.pi/lambda_x
-    lambda_y = 2*np.pi*radius/y_wavenumbers # Wavelength in y-direction at input latitude
-    y_num = 2*np.pi/lambda_y
+        fft2 = sp.fft.fftshift(sp.fftpack.fft2(sp.fft.ifftshift(magnitude)))
+        yfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[1],d=1./nlat))
+        xfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[2],d=1./nlon))
+        psd = np.abs(fft2)**2
+        
+        quadrant = psd[:,45:51,72:78] # Select positive zonal and meridional wavenumbers <= 5 
+        xfreqs = xfreqs[72:78] # Select corresponding x- and y-frequencies
+        yfreqs = yfreqs[45:51]
     
-    c_phase = (zmzw - (beta/(x_num**2+y_num**2)))
+        x_wavenumbers = []
+        y_wavenumbers = []
+        for time in range(0,psd.shape[0]):
+            peak = unravel_index(quadrant[time,:,:].argmax(), quadrant[time,:,:].shape)
+            x_wavenumbers.append(peak[1])
+            y_wavenumbers.append(peak[0])
+            
+        x_wavenumbers, y_wavenumbers = np.array(x_wavenumbers)+1, np.array(y_wavenumbers)+1
+        
+        lat_deg = np.abs(lat-45)*2 # Convert input row number to latitude in degrees north
+        zmzw = x_wind[:,level,lat].collapsed('longitude',iris.analysis.MEAN)
+        zmzw = zmzw.data
+        
+        lat_rad = lat_deg*(np.pi/180) # Convert input latitude to radians
+        beta = 2*omega*np.cos(lat_rad)/radius # Beta factor    
+        circum = 2*np.pi*radius*np.cos(lat_rad) # Circumference in meters at input latitude    
+        lambda_x = circum/x_wavenumbers # Wavelength in x-direction at input latitude
+        x_num = 2*np.pi/lambda_x
+        lambda_y = 2*np.pi*radius/y_wavenumbers # Wavelength in y-direction at input latitude
+        y_num = 2*np.pi/lambda_y
+        
+        c_phase = (zmzw - (beta/(x_num**2+y_num**2)))                               
+        cphase_list.append(c_phase)
     
-    plt.plot(c_phase,color='b')
-    plt.title('Rossby wave phase velocity at %s N' %(lat))
+    plt.plot(cphase_list[0],color='r', label=names[0])
+    plt.plot(cphase_list[1], color='b', label=names[1])
+    plt.title('Rossby wave phase velocity at %s N' %(lat_deg))
     plt.xlabel('Time [days]')
     plt.ylabel('Velocity [m/s]')
+    plt.ylim(-35,15)
+    plt.legend()
     if save == 'yes':
-        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/rwave_vel.eps', format='eps')
+        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/rwave_vel_fixedaxis.eps', format='eps', bbox_inches='tight')
     else:
         pass  
     plt.show()
 
+        
 
+def cphase_vals(datalist, start=0, end=300, ndata=5, nlat=90, nlon=144, level=8, lat=73,save='no'):
+    
+    names = ['Control ProxB',
+                'Warm ProxB','Control TRAP1-e','Warm TRAP1-e','Dry TRAP1-e']
+    
+    omegas = [6.46e-06, 7.93e-06,1.19e-05, 1.75e-05, 1.19e-05]
+    radii = [7160000, 7160000, 5797818, 5797818, 5797818]
+    
+    output_list = []
+    
+    for i in range(ndata):
+        
+        data = datalist[i]
+        name = names[i]
+        omega = omegas[i]
+        radius = radii[i]
+        
+        for cube in data:
+            if cube.standard_name == 'x_wind':
+                x_wind = cube[start:end,:,:,:].copy()
+            if cube.standard_name == 'y_wind':
+                y_wind = cube[start:end,:,:,:].copy()
+            
+        y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+        km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
+        
+        winds = windspharm.iris.VectorWind(x_wind[:,level,:,:],y_wind[:,level,:,:])
+        uchi,vchi,upsi,vpsi = winds.helmholtz(truncation=21)
+    
+        
+        zonal_upsi = upsi.collapsed('longitude', iris.analysis.MEAN)
+        zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
+        eddy_upsi = upsi - zonal_upsi
+        eddy_vpsi = vpsi - zonal_vpsi
+        magnitude = np.sqrt(eddy_upsi.data**2 + eddy_vpsi.data**2)
+        
+        fft2 = sp.fft.fftshift(sp.fftpack.fft2(sp.fft.ifftshift(magnitude)))
+        yfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[1],d=1./nlat))
+        xfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[2],d=1./nlon))
+        psd = np.abs(fft2)**2
+        
+        quadrant = psd[:,45:51,72:78] # Select positive zonal and meridional wavenumbers <= 5 
+        xfreqs = xfreqs[72:78] # Select corresponding x- and y-frequencies
+        yfreqs = yfreqs[45:51]
+    
+        x_wavenumbers = []
+        y_wavenumbers = []
+        for time in range(0,psd.shape[0]):
+            peak = unravel_index(quadrant[time,:,:].argmax(), quadrant[time,:,:].shape)
+            x_wavenumbers.append(peak[1])
+            y_wavenumbers.append(peak[0])
+            
+        x_wavenumbers, y_wavenumbers = np.array(x_wavenumbers)+1, np.array(y_wavenumbers)+1
+        
+        lat_deg = np.abs(lat-45)*2 # Convert input row number to latitude in degrees north
+        zmzw = x_wind[:,level,lat].collapsed('longitude',iris.analysis.MEAN)
+        zmzw = zmzw.data
+        mean_zmzw = np.mean(zmzw,axis=0)
+        
+        lat_rad = lat_deg*(np.pi/180) # Convert input latitude to radians
+        beta = 2*omega*np.cos(lat_rad)/radius # Beta factor    
+        circum = 2*np.pi*radius*np.cos(lat_rad) # Circumference in meters at input latitude    
+        lambda_x = circum/x_wavenumbers # Wavelength in x-direction at input latitude
+        x_num = 2*np.pi/lambda_x
+        lambda_y = 2*np.pi*radius/y_wavenumbers # Wavelength in y-direction at input latitude
+        y_num = 2*np.pi/lambda_y
+        
+        c_phase = (zmzw - (beta/(x_num**2+y_num**2)))
+        mean_cphase = np.mean(c_phase, axis=0)
+        print(mean_cphase)
+
+        
+        c_phase_df = pd.DataFrame(index=range(start,end), columns=['Simulation','Beta', 'X', 'Y', 'Factor','Mean cphase','ZMZW','Mean ZMZW','Lat'])
+        c_phase_df['Simulation'] = name
+        c_phase_df['Beta'] = (beta*10**12)*np.ones_like(x_num)
+        c_phase_df['X'] = x_num
+        c_phase_df['Y'] = y_num
+        c_phase_df['Factor'] = (beta/(x_num**2+y_num**2))
+        c_phase_df['Mean cphase'] = mean_cphase*np.ones_like(x_num)
+        c_phase_df['ZMZW'] = zmzw
+        c_phase_df['Mean ZMZW'] = mean_zmzw*np.ones_like(x_num)
+        c_phase_df['Lat'] = lat_deg*np.ones_like(x_num)
+        
+        output_list.append(c_phase_df)
+        
+    output = pd.concat(output_list)
+    print(output)
+    if save=='yes':
+        output.to_csv('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/c_phase_vals.csv')
+        
+
+def find_zero(datalist, ndata=5, start=0, end=300, nlat=90, nlon=144, level=8, save='no'):
+    
+    names = ['Control ProxB',
+                'Warm ProxB','Control TRAP1-e','Warm TRAP1-e','Dry TRAP1-e']
+    
+    omegas = [6.46e-06, 7.93e-06,1.19e-05, 1.75e-05, 1.19e-05]
+    radii = [7160000, 7160000, 5797818, 5797818, 5797818]
+    
+    output_list = []
+    
+    for i in range(ndata):
+        
+        data = datalist[i]
+        name = names[i]
+        omega = omegas[i]
+        radius = radii[i]
+        
+        for cube in data:
+            if cube.standard_name == 'x_wind':
+                x_wind = cube[start:end,:,:,:].copy()
+            if cube.standard_name == 'y_wind':
+                y_wind = cube[start:end,:,:,:].copy()
+            
+        y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
+        km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
+        
+        winds = windspharm.iris.VectorWind(x_wind[:,level,:,:],y_wind[:,level,:,:])
+        uchi,vchi,upsi,vpsi = winds.helmholtz(truncation=21)
+          
+        zonal_upsi = upsi.collapsed('longitude', iris.analysis.MEAN)
+        zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
+        eddy_upsi = upsi - zonal_upsi
+        eddy_vpsi = vpsi - zonal_vpsi
+        magnitude = np.sqrt(eddy_upsi.data**2 + eddy_vpsi.data**2)
+        
+        fft2 = sp.fft.fftshift(sp.fftpack.fft2(sp.fft.ifftshift(magnitude)))
+        yfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[1],d=1./nlat))
+        xfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[2],d=1./nlon))
+        psd = np.abs(fft2)**2
+        
+        quadrant = psd[:,45:51,72:78] # Select positive zonal and meridional wavenumbers <= 5 
+        xfreqs = xfreqs[72:78] # Select corresponding x- and y-frequencies
+        yfreqs = yfreqs[45:51]
+
+        x_wavenumbers = []
+        y_wavenumbers = []
+        for time in range(0,psd.shape[0]):
+            peak = unravel_index(quadrant[time,:,:].argmax(), quadrant[time,:,:].shape)
+            x_wavenumbers.append(peak[1])
+            y_wavenumbers.append(peak[0])
+            
+        x_wavenumbers, y_wavenumbers = np.array(x_wavenumbers)+1, np.array(y_wavenumbers)+1
+        
+        lat_deg = x_wind.coord('latitude').points
+        zmzw = x_wind[:,level,:,:].collapsed('longitude',iris.analysis.MEAN)
+        zmzw = zmzw.data
+        
+        lat_rad = lat_deg*(np.pi/180) # Convert input latitude to radians
+        beta = 2*omega*np.cos(lat_rad)/radius # Beta factor    
+        circum = 2*np.pi*radius*np.cos(lat_rad) # Circumference in meters at input latitude
+
+        lambda_x_list = []
+        for i in range(len(x_wavenumbers)):          
+            lambda_x_item = circum/x_wavenumbers[i] # Wavelength in x-direction at input latitude
+            lambda_x_list.append(lambda_x_item)
+        lambda_x = np.array(lambda_x_list)
+        x_num = 2*np.pi/lambda_x
+        lambda_y = 2*np.pi*radius/y_wavenumbers # Wavelength in y-direction at input latitude
+        y_num = 2*np.pi/lambda_y
+        
+        c_phase_list = []
+        for j in range(len(zmzw)):
+            c_phase_item = (zmzw[j] - (beta/(x_num[j]**2+y_num[j]**2)))
+            c_phase_list.append(c_phase_item)
+        c_phase = np.array(c_phase_list)
+
+        # mean = np.mean(c_phase[:,80:90])
+        # textstr= r'Mean$=%.2f$' % mean
+        # props = dict(boxstyle='square', facecolor='white', alpha=1.0)
+        
+        fig, ax = plt.subplots(figsize=(10,6))
+        plt.contourf(c_phase.T, cmap=redblu, norm=TwoSlopeNorm(0))
+        plt.title('Rossby wave phase velocity')
+        plt.xlabel('Time [days]')
+        plt.ylabel('Latitude [degrees]')
+        plt.yticks((0,22, 45, 67, 90), ('90S', '45S', '0', '45N', '90N'))
+        mbar = plt.colorbar(pad=0.1)
+        # mbar.set_ticks(np.arange(-100, 100, 20))
+        mbar.ax.set_title('m/s')
+        # ax.text(0.05, 0.2, textstr, transform=ax.transAxes, fontsize=10, verticalalignment='top', bbox=props)
+        
+        if save == 'yes':
+            plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/cphase_hov_%s.eps' %name, format='eps', bbox_inches='tight')
+        else:
+            pass  
+        plt.show()
+    
+    
+    
+
+def zmzwplots(datalist, ndata=5, start=0, end=300, level=8, lats=(55,85), save='no'):
+    
+    names = ['Control ProxB',
+                'Warm ProxB','Control TRAP1-e','Warm TRAP1-e','Dry TRAP1-e']
+    
+    output_list = []
+    mean_list = []
+    
+    for i in range(ndata):
+       
+        data = datalist[i]
+        name = names[i]
+       
+        for cube in data:
+            if cube.standard_name == 'x_wind':
+                x_wind = cube[start:end,level,:,:].copy()
+               
+        km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
+#        lat_deg = np.abs(lat-45)*2 # Convert input row number to latitude in degrees north
+        if x_wind.coord('latitude').bounds == None:
+            x_wind.coord('latitude').guess_bounds()
+        if x_wind.coord('longitude').bounds == None:
+            x_wind.coord('longitude').guess_bounds()
+            
+        lat_band = x_wind.intersection(latitude=(lats[0],lats[1]))
+        latpoints = np.round(lat_band.coord('latitude').points)
+        lat_grid = iris.analysis.cartography.area_weights(lat_band)
+    
+        zmzw = lat_band.collapsed(['latitude','longitude'],iris.analysis.MEAN, weights=lat_grid)  
+    
+ #       zmzw = x_wind[:,level,lat].collapsed('longitude',iris.analysis.MEAN)
+        zmzw = zmzw.data
+        mean_zmzw = np.round(np.mean(zmzw,axis=0))
+        mean_list.append(mean_zmzw)
+        print(mean_zmzw)
+        output_list.append(zmzw)
+    
+    plt.subplots(figsize=(12,8))
+    plt.plot(output_list[0], color='b', label=names[0] + ', Mean: ' + str(mean_list[0]))
+    plt.plot(output_list[1], color='r', label=names[1] + ', Mean: ' + str(mean_list[1]))
+    plt.plot(output_list[2], color='g', label=names[2] + ', Mean: ' + str(mean_list[2]))
+    plt.plot(output_list[3], color='k', label=names[3] + ', Mean: ' + str(mean_list[3]))
+    plt.plot(output_list[4], color='y', label=names[4] + ', Mean: ' + str(mean_list[4]))
+    plt.title('Zonal mean zonal wind from %sN to %sN' %(int(latpoints[0]), int(latpoints[-1])), fontsize=16)
+    plt.ylabel('Wind velocity [m/s]')
+    plt.xlabel('Time [days]')
+    plt.legend()
+    
+    if save == 'yes':
+        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/zmzw_all.eps', format='eps', bbox_inches='tight')
+    else:
+        pass  
+    plt.show()
+    
 def vertical_profile(cubes,start=500,end=600,level=8,top_level=30,select='absolute',save='no'):
 
     """ This function plots the vertical profile of the chosen data input over time.
@@ -538,17 +791,28 @@ def cloud_type(cubes, start=0,end=600, long1=36, long2=108, filtering=True,
     
     ice_condensate = ice_condensate_raw.data
     liquid_condensate = liquid_condensate_raw.data
-    
+
     y_axis = np.round(liquid_condensate_raw.coord('level_height').points*1e-03,0)
     x_axis = liquid_condensate_raw.coord('latitude').points
     time_axis = np.arange(0,liquid_condensate.shape[0])
+    heights = np.array(ice_condensate_raw.coord('level_height').points)
+        
+    ice_east = np.mean(ice_condensate[:,:,:,long1], axis=2)
+    ice_east = np.average(ice_east,axis=1,weights=heights)
+    ice_west = np.mean(ice_condensate[:,:,:,long2], axis=2)
+    ice_west = np.average(ice_west,axis=1,weights=heights)
     
-    ice_east = np.mean(ice_condensate[:,:,:,long1], axis=(1,2))
-    ice_west = np.mean(ice_condensate[:,:,:,long2], axis=(1,2))
-    total_ice = (ice_east + ice_west)/2
+    liq_east = np.mean(liquid_condensate[:,:,:,long1], axis=2)
+    liq_east = np.average(liq_east,axis=1,weights=heights)
+    liq_west = np.mean(liquid_condensate[:,:,:,long2], axis=2)
+    liq_west = np.average(liq_west,axis=1,weights=heights)
     
-    liq_east = np.mean(liquid_condensate[:,:,:,long1], axis=(1,2))
-    liq_west = np.mean(liquid_condensate[:,:,:,long2], axis=(1,2))
+    # ice_east = np.mean(ice_condensate[:,:,:,long1], axis=(1,2))
+    # ice_west = np.mean(ice_condensate[:,:,:,long2], axis=(1,2))
+    total_ice = (ice_east + ice_west)/2    
+    
+    # liq_east = np.mean(liquid_condensate[:,:,:,long1], axis=(1,2))
+    # liq_west = np.mean(liquid_condensate[:,:,:,long2], axis=(1,2))
     total_liq = (liq_east + liq_west)/2
     
     if filtering == True:
@@ -604,19 +868,19 @@ def cloud_type(cubes, start=0,end=600, long1=36, long2=108, filtering=True,
     plt.legend()
     
     if save == 'yes':
-        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/cloudvari_lon_%s_%s_trap.eps' %(start,end), format='eps')
+        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/cloudvari_lon_%s_%s_warmtrap.eps' %(start,end), format='eps')
     else:
         pass
     plt.show()
     
-def hovmoeller_rwaves(cubes, start=0,end=100,level=8,lats=(55,85),save='no'):
+def hovmoeller_rwaves(cubes, start=0,end=100,level=8,lats=(55,85),title='trap',save='no'):
 
     for cube in cubes:
         if cube.standard_name == 'y_wind':
             y_wind = cube[start:end,level,:,:].copy()
     
     time_axis = np.arange(0,y_wind.shape[0])
-    lons = y_wind.coord('longitude').points
+    lons = y_wind.shape[2]/2
     if y_wind.coord('latitude').bounds == None:
         y_wind.coord('latitude').guess_bounds()
     if y_wind.coord('longitude').bounds == None:
@@ -628,21 +892,157 @@ def hovmoeller_rwaves(cubes, start=0,end=100,level=8,lats=(55,85),save='no'):
     band_mean = lat_band.collapsed('latitude',iris.analysis.MEAN)
     band_mean = band_mean.data
     
-    plt.contourf(np.roll(lons, 72), time_axis, np.roll(band_mean, 72, axis=1), cmap=redblu, norm=TwoSlopeNorm(0))
+    plt.subplots(figsize=(8,6))
+    plt.contourf(np.arange(-lons, lons), time_axis, np.roll(band_mean, 72, axis=1), cmap=redblu, norm=TwoSlopeNorm(0))
     plt.title('Mean meridional wind from %s to %s N' %(lats[0],lats[1]))
     plt.xlabel('Longitude [degrees]')
     plt.ylabel('Time [days]')
+    plt.xticks((-72, -48, -24, 0, 24, 48, 72), ('180W',
+                 '120W', '60W', '0', '60E', '120E', '180E'))
     cbar = plt.colorbar(pad=0.1)
     cbar.ax.set_title('m/s')
     
     if save == 'yes':
-        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/hov_rwaves%sto%s.eps' %(start,end), format='eps')
+        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/hov_rwaves%sto%s_%s.eps' %(start,end, title), format='eps', bbox_inches='tight')
     else:
         pass
         
     plt.show()
     
     return
+
+
+def rossby_no(datalist, ndata=4, lat=60):
+    
+    names = ['Control ProxB',
+                'Warm ProxB','Control TRAP1-e','Warm TRAP1-e']
+    
+    omegas = [6.46e-06, 7.93e-06,1.19e-05, 1.75e-05]
+    radii = [7160000, 7160000, 5797818, 5797818]
+    
+    rno_list = []
+    
+    for i in range(ndata):
+       
+        data = datalist[i]
+        name = names[i]
+        omega = omegas[i]
+        radius = radii[i]
+       
+        for cube in data:
+            if cube.standard_name == 'x_wind':
+                x_wind = cube.copy()
+                
+        lats = x_wind.coord('latitude')
+        lons = x_wind.coord('longitude')
+        
+        if lats.bounds == None:
+            x_wind.coord('latitude').guess_bounds()
+        if lons.bounds == None:
+            x_wind.coord('longitude').guess_bounds()
+        
+        grid = iris.analysis.cartography.area_weights(x_wind)
+        mean_wind = x_wind.collapsed(['longitude','latitude','level_height','time'], iris.analysis.MEAN, weights=grid)
+        U = mean_wind.data
+        L = np.pi*radius
+        f = 2*omega*np.sin(lat*np.pi/180)
+        
+        rno = U/(L*f)
+        print(name + f' has a Rossby number of {rno}')
+        
+        rno_list.append(rno)
+    
+    rno_df = pd.DataFrame(index=range(0,len(names)),columns = ['Name', 'RossbyNo'])
+    rno_df['Name'] = names
+    rno_df['RossbyNo'] = rno_list
+    print(rno_df)
+    rno_df.to_csv('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/rnos.csv')
+
+    
+def temp_gradient(datalist,start=0, end=300, ndata=4,lats=(45,90),level=(8,9)):
+    
+    names = ['Control ProxB',
+                'Warm ProxB','Control TRAP1-e','Warm TRAP1-e']
+    
+    omegas = [6.46e-06, 7.93e-06,1.19e-05, 1.75e-05]
+    radii = [7160000, 7160000, 5797818, 5797818]
+    
+    therms = []
+    grads = []
+    
+    for i in range(ndata):
+       
+        data = datalist[i]
+        name = names[i]
+        omega = omegas[i]
+        radius = radii[i]
+       
+        for cube in data:
+            if cube.standard_name == 'air_potential_temperature':
+                theta = cube[start:end,:,:,:].copy()
+            if cube.standard_name == 'air_pressure':
+                pressure = cube[start:end,:,:,:].copy()
+            if cube.standard_name == 'x_wind':
+                x_wind = cube[start:end,:,:,:].copy()
+            if cube.standard_name == 'y_wind':
+                y_wind = cube[start:end,:,:,:].copy()
+                
+        p0 = iris.coords.AuxCoord(
+            100000.0, long_name='reference_pressure', units='Pa')
+        p0.convert_units(pressure.units)
+        temperature = theta*((pressure/p0)**(287.05/1005)) # R and cp in J/kgK for 300K
+        temp_gradient = iris.analysis.calculus.differentiate(temperature, 'latitude')
+        lat_band = temp_gradient.intersection(latitude=(lats[0],lats[1]))
+
+        latitudes = lat_band.coord('latitude')
+        longitudes = lat_band.coord('longitude')
+        
+        if latitudes.bounds == None:
+            lat_band.coord('latitude').guess_bounds()
+        if longitudes.bounds == None:
+            lat_band.coord('longitude').guess_bounds()
+        
+        grid = iris.analysis.cartography.area_weights(lat_band)
+
+        mean_grad = lat_band[:,level[0]:level[1],:,:].collapsed(['longitude','latitude','level_height','time'], iris.analysis.MEAN, weights=grid[:,level[0]:level[1],:,:])       
+        mean_grad = mean_grad/(0.5*np.pi*radius/(lats[1]-lats[0]))
+        flist = []
+        for lat_item in range(lats[0], lats[1]):
+            
+            f = 2*omega*np.sin(lat_item*np.pi/180)
+            flist.append(f)
+        
+        mean_f = np.mean(np.array(flist))
+        
+        platitudes = pressure.coord('latitude')
+        plongitudes = pressure.coord('longitude')
+        
+        if platitudes.bounds == None:
+            pressure.coord('latitude').guess_bounds()
+        if plongitudes.bounds == None:
+            pressure.coord('longitude').guess_bounds()
+        
+        pgrid = iris.analysis.cartography.area_weights(pressure)
+        p1 = pressure[:,level[0]:level[1],:,:].collapsed(['longitude','latitude','level_height','time'], iris.analysis.MEAN, weights=pgrid[:,level[0]:level[1],:,:])
+        p2 = pressure[:,level[0]+1:level[1]+1,:,:].collapsed(['longitude','latitude','level_height','time'], iris.analysis.MEAN, weights=pgrid[:,level[0]+1:level[1]+1,:,:])
+        print(p1.data, p2.data, mean_f)
+        thermal = -(287.05/mean_f)*(np.log(p1.data/p2.data))*mean_grad.data
+        
+        grads.append(mean_grad.data)
+        therms.append(thermal)
+        
+        print(name + f': {mean_grad.data}')
+        print(name + f': {thermal}')
+        
+    thermal_df = pd.DataFrame(index=range(0,len(names)), columns=['Name','Gradient','Thermal wind'])
+    thermal_df['Name'] = names
+    thermal_df['Gradient'] = grads
+    thermal_df['Thermal wind'] = therms
+
+    print(thermal_df)
+    thermal_df.to_csv('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/thermal_wind.csv')
+    return
+    
 
 
 def clim_stats(datalist,ndata=5,start=0,end=300):
@@ -736,4 +1136,4 @@ def clim_stats(datalist,ndata=5,start=0,end=300):
     stats.to_csv('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/clim_stats.csv')
         
         
-    return 
+    return
