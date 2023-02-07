@@ -17,6 +17,7 @@ from iris.analysis import calculus
 
 
 redblu = mpl_cm.get_cmap('brewer_RdBu_11')
+plasma = mpl_cm.get_cmap('plasma')
 
 
 def plot_vorts(cubes, time_slice=-1, level=8, omega=1.19e-05, g=9.12, lat=50):
@@ -80,7 +81,7 @@ def plot_vorts(cubes, time_slice=-1, level=8, omega=1.19e-05, g=9.12, lat=50):
     color_levs = np.arange(-10,10,1)
     plt.figure(figsize=(8,5))
     plt.contourf(np.arange(-longitudes/2, longitudes/2), np.arange(-latitudes/2, latitudes/2),
-                 np.roll(rel_vort[level,:,:].data, 72, axis=1)*1e5, levels=color_levs, cmap=redblu, norm=TwoSlopeNorm(0))
+                 np.roll(rel_vort[level,:,:].data, 72, axis=1), cmap=redblu)
     plt.title('Relative Vorticity, h = %s km' %(heights[level]))
     plt.xlabel('Longitude [degrees]')
     plt.ylabel('Latitude [degrees]')
@@ -89,7 +90,7 @@ def plot_vorts(cubes, time_slice=-1, level=8, omega=1.19e-05, g=9.12, lat=50):
     plt.yticks((-45, -30, -15, 0, 15, 30, 45),
                 ('90S', '60S', '30S', '0', '30N', '60N', '90N'))
     cbar = plt.colorbar(pad=0.2, orientation='horizontal')
-    cbar.set_ticks(color_levs)
+#    cbar.set_ticks(color_levs)
     cbar.ax.set_title('$10^{-5}$ s$^{-1}$')
     # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/deepconvection.eps', format='eps')
     plt.show()

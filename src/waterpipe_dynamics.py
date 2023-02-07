@@ -757,17 +757,20 @@ def zonal_wind_profile(cubes):
     plt.ylabel('Height [km]')
     plt.show()
     
-def rwave_speeds(cubes,omega=7.93e-06,radius=7160000,lat=60,level=8,start=300,end=400,kx=1,ky=1):
+def rwave_speeds(cubes,omega=1.19e-0,radius=5797818,lat=60,level=8,start=300,end=400,kx=1,ky=1):
     
     for cube in cubes:
         if cube.standard_name == 'x_wind' or cube.standard_name =='eastward_wind':
             x_wind = cube[start:end,level,lat,:].copy()
-
+            
+    latitudes = x_wind.coord('latitude').points
     zmzw = x_wind.collapsed('longitude',iris.analysis.MEAN)
     mean_zmzw = zmzw.collapsed('time',iris.analysis.MEAN)
     zmzw = zmzw.data
     mean_zmzw = mean_zmzw.data
     
+    lat_deg = int(latitudes[lat])
+
     lat_rad = lat*(np.pi/180) # Convert latitude to radians
     beta = 2*omega*np.cos(lat_rad)/radius # Beta factor
     

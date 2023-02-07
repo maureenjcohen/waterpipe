@@ -18,7 +18,7 @@ from numpy import unravel_index
 import scipy as sp
 import windspharm
 from iris.analysis import calculus
-import pandas as pd
+#import pandas as pd
 
 redblu = mpl_cm.get_cmap('coolwarm')
 plasma = mpl_cm.get_cmap('plasma')
@@ -209,7 +209,7 @@ def composite(cubes, time_slice=500, nlat=90, nlon=144, nlev=38, level=8, n=4, c
             pass            
         plt.show()
 
-def rwave_velocity(datalist,start=500,end=600,nlat=90,nlon=144,level=8,omega=1.19e-05,radius=5797818,lat=73,save='no'):
+def rwave_velocity(datalist,start=500,end=600,nlat=90,nlon=144,level=8,omega=1.19e-05,g=9.12,radius=5797818,lat=73,save='no'):
 
     """ This function calculates the Rossby wave phase speed (including zonal wind) over time.
 
@@ -224,6 +224,8 @@ def rwave_velocity(datalist,start=500,end=600,nlat=90,nlon=144,level=8,omega=1.1
     where the cyclonic structure appears to travel back and forth periodically. """
     
     cphase_list = []
+    cphase_hlist = []
+    cgroup_list = []
     names = ['Control TRAP-1e', 'Dry TRAP-1e']
     
     for cubes in datalist:
@@ -232,9 +234,14 @@ def rwave_velocity(datalist,start=500,end=600,nlat=90,nlon=144,level=8,omega=1.1
                 x_wind = cube[start:end,:,:,:].copy()
             if cube.standard_name == 'y_wind':
                 y_wind = cube[start:end,:,:,:].copy()
+            if cube.standard_name =='air_potential_temperature':
+                theta = cube[start:end,:,:,:].copy()
+            if cube.standard_name =='air_pressure':
+                pressure = cube[start:end,:,:,:].copy()
             
         y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
         km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
+        latitudes = x_wind.coord('latitude').points
         
         winds = windspharm.iris.VectorWind(x_wind[:,level,:,:],y_wind[:,level,:,:])
         uchi,vchi,upsi,vpsi = winds.helmholtz(truncation=21)
@@ -244,27 +251,35 @@ def rwave_velocity(datalist,start=500,end=600,nlat=90,nlon=144,level=8,omega=1.1
         zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
         eddy_upsi = upsi - zonal_upsi
         eddy_vpsi = vpsi - zonal_vpsi
-        magnitude = np.sqrt(eddy_upsi.data**2 + eddy_vpsi.data**2)
+        eddies = windspharm.iris.VectorWind(eddy_upsi, eddy_vpsi)
+        rel_vort = eddies.vorticity()
+#        magnitude = np.sqrt(eddy_upsi.data**2 + eddy_vpsi.data**2)
+#        rel_vort = winds.vorticity()
         
-        fft2 = sp.fft.fftshift(sp.fftpack.fft2(sp.fft.ifftshift(magnitude)))
+        fft2 = sp.fft.fftshift(sp.fftpack.fft2(sp.fft.ifftshift(rel_vort.data)))
         yfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[1],d=1./nlat))
         xfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[2],d=1./nlon))
         psd = np.abs(fft2)**2
+        x_zero = int(nlon/2) # Identify the midpoint of the x-axis
+        y_zero = int(nlat/2) # Identify the midpoint of the y-axis
         
-        quadrant = psd[:,45:51,72:78] # Select positive zonal and meridional wavenumbers <= 5 
-        xfreqs = xfreqs[72:78] # Select corresponding x- and y-frequencies
-        yfreqs = yfreqs[45:51]
-    
+        quadrant = psd[:,y_zero:y_zero+5,x_zero:x_zero+5] # Select positive zonal and meridional wavenumbers <= 5 
+        xfreqs = xfreqs[x_zero:x_zero+5] # Select corresponding x-frequencies
+        yfreqs = yfreqs[y_zero:y_zero+5] # Select corresponding y-frequencies
+        
         x_wavenumbers = []
         y_wavenumbers = []
         for time in range(0,psd.shape[0]):
-            peak = unravel_index(quadrant[time,:,:].argmax(), quadrant[time,:,:].shape)
-            x_wavenumbers.append(peak[1])
-            y_wavenumbers.append(peak[0])
+            peak = unravel_index(np.argmax(quadrant[time,:,:], axis=None), quadrant[time,:,:].shape)
+            print(peak)
+            x_wavenumbers.append(1) # We add one here because the array index starts at 0, but index 0 is wavenumber 1
+            y_wavenumbers.append(0)
             
-        x_wavenumbers, y_wavenumbers = np.array(x_wavenumbers)+1, np.array(y_wavenumbers)+1
+        x_wavenumbers, y_wavenumbers = np.array(x_wavenumbers), np.array(y_wavenumbers)
+        print(x_wavenumbers, y_wavenumbers)
         
-        lat_deg = np.abs(lat-45)*2 # Convert input row number to latitude in degrees north
+        lat_deg = int(latitudes[lat]) # Convert input row number to latitude in degrees north
+        print(lat_deg)
         zmzw = x_wind[:,level,lat].collapsed('longitude',iris.analysis.MEAN)
         zmzw = zmzw.data
         
@@ -276,16 +291,25 @@ def rwave_velocity(datalist,start=500,end=600,nlat=90,nlon=144,level=8,omega=1.1
         lambda_y = 2*np.pi*radius/y_wavenumbers # Wavelength in y-direction at input latitude
         y_num = 2*np.pi/lambda_y
         
-        c_phase = (zmzw - (beta/(x_num**2+y_num**2)))                               
+        d_theta = iris.analysis.calculus.differentiate(theta, 'level_height')
+        bv_freq = np.mean(np.sqrt(np.abs((g/theta[:,:-1,:,:].data)*d_theta.data)), axis=-1)
+        Ld = (bv_freq[:,level,lat]*6800)/(2*omega*np.sin(lat_rad))
+        
+        c_phase = (zmzw - ((beta + (zmzw/Ld**2))/(x_num**2+y_num**2 + (1/Ld)**2)))                               
         cphase_list.append(c_phase)
-    
-    plt.plot(cphase_list[0],color='r', label=names[0])
-    plt.plot(cphase_list[1], color='b', label=names[1])
+        c_phase_h = (zmzw - (beta/(x_num**2+y_num**2))) 
+        cphase_hlist.append(c_phase_h)
+        
+    plt.plot(cphase_list[0],color='r', label=names[0] + ', with kd')
+    plt.plot(cphase_list[1], color='b', label=names[1] + ', with kd')
+    plt.plot(cphase_hlist[0],color='r', linestyle='dashed', label=names[0] + ', no kd')
+    plt.plot(cphase_hlist[1], color='b', linestyle='dashed', label=names[1] + ', no kd')
+
     plt.title('Rossby wave phase velocity at %s N' %(lat_deg))
     plt.xlabel('Time [days]')
     plt.ylabel('Velocity [m/s]')
-    plt.ylim(-35,15)
-    plt.legend()
+#    plt.ylim(-35,25)
+    plt.legend(fontsize='x-small')
     if save == 'yes':
         plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/rwave_vel_fixedaxis.eps', format='eps', bbox_inches='tight')
     else:
