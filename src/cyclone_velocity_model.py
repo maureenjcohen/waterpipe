@@ -12,6 +12,7 @@ import matplotlib.cm as mpl_cm
 import scipy as sp
 from numpy import unravel_index
 from iris.coord_systems import GeogCS
+from iris.analysis import calculus
 from matplotlib.colors import TwoSlopeNorm
 
 
@@ -21,99 +22,81 @@ plasma = mpl_cm.get_cmap('plasma')
 
 
 
-def model_vel(cubes,start=500,end=600,level=8,omega=7.93e-06,radius=7160000,lat=55):
+def model_vel(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,omega=1.19e-05,g=9.12,radius=5797818,lat=80,save='no'):
     
     for cube in cubes:
         if cube.standard_name == 'x_wind':
             x_wind = cube[start:end,:,:,:].copy()
+            longterm_x_wind = cube.copy()
         if cube.standard_name == 'y_wind':
             y_wind = cube[start:end,:,:,:].copy()
-        
+        if cube.standard_name =='air_potential_temperature':
+            theta = cube[start:end,:,:,:].copy()
+        if cube.standard_name =='air_pressure':
+            pressure = cube[start:end,:,:,:].copy()
+            
+    cphase_list = []
+    cphase_hlist = []
+    time_axis = np.arange(start, end)
+    
+    longterm_zmzw = longterm_x_wind[:,level,lat,0:72].collapsed(['longitude','time'], iris.analysis.MEAN)
+    print(longterm_zmzw.data)
+    
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
     km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
+    latitudes = x_wind.coord('latitude').points
     
     winds = windspharm.iris.VectorWind(x_wind[:,level,:,:],y_wind[:,level,:,:])
     # Create a VectorWind data object from the x and y wind cubes
-    uchi,vchi,upsi,vpsi = winds.helmholtz(truncation=21)
-    # Calculate the Helmholtz decomposition. Truncation is set to 21 because 
-    # this is what Hammond and Lewis 2021 used.
     
-    zonal_upsi = upsi.collapsed('longitude', iris.analysis.MEAN)
-    zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
-    # Calculate zonal means of the x and y components of the rotational component
-    eddy_upsi = upsi - zonal_upsi
-    eddy_vpsi = vpsi - zonal_vpsi
-    magnitude = np.sqrt(eddy_upsi.data**2 + eddy_vpsi.data**2)
+    lat_deg = int(latitudes[lat]) # Convert input row number to latitude in degrees north
+    print(lat_deg)
+    zmzw = x_wind[:,level,lat,0:72].collapsed('longitude',iris.analysis.MEAN)
+    zmzw = longterm_zmzw.data - zmzw.data
     
-    fft2 = sp.fft.fftshift(sp.fftpack.fft2(sp.fft.ifftshift(magnitude)))
-    yfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[1],d=1./90))
-    xfreqs = sp.fft.fftshift(sp.fft.fftfreq(fft2.shape[2],d=1./144))
-    psd = np.abs(fft2)**2
+    lat_rad = lat_deg*(np.pi/180) # Convert input latitude to radians
+    beta = 2*omega*np.cos(lat_rad)/radius # Beta factor    
+    circum = 2*np.pi*radius*np.cos(lat_rad) # Circumference in meters at input latitude   
+    x_num = 2*np.pi/circum
     
-    quadrant = psd[:,45:51,72:78]
-    xfreqs = xfreqs[72:78]
-    yfreqs = yfreqs[45:51]
+    d_theta = iris.analysis.calculus.differentiate(theta, 'level_height')
+    bv_freq = np.mean(np.sqrt(np.abs((g/theta[:,:-1,:,:].data)*d_theta.data)), axis=-1)
+    Ld = (bv_freq[:,level,lat]*6800)/(2*omega*np.sin(lat_rad))
+    
+    wave_num = beta + zmzw*((1./Ld)**2)
+    wave_denom = x_num**2 + (1./Ld)**2
+    wave_component = wave_num/wave_denom
+    
+    c_phase = zmzw - wave_component                               
+    cphase_list.append(c_phase)
+    c_phase_h = (zmzw - (beta/(x_num**2))) 
+    cphase_hlist.append(c_phase_h)
 
-    x_wavenumbers = []
-    y_wavenumbers = []
-    for time in range(0,psd.shape[0]):
-        peak = unravel_index(quadrant[time,:,:].argmax(), quadrant[time,:,:].shape)
-        x_wavenumbers.append(peak[1])
-        y_wavenumbers.append(peak[0])
-        
-    x_wavenumbers, y_wavenumbers = np.array(x_wavenumbers)+1, np.array(y_wavenumbers)+1
+    distance = np.cumsum(c_phase*60*60*24) # Convert m/s to m/day = distance travelled in a day
+    deg_dist = distance*(360/circum)+startlon
+    stationary = beta/(x_num**2)
+    print(deg_dist)
     
-    zmzw_lat = lat 
-    lat = np.abs(lat-45)*2 # Convert input row number to latitude in degrees north
-    zmzw = x_wind[:,level,zmzw_lat].collapsed('longitude',iris.analysis.MEAN)
-    zmzw = zmzw.data
-        
-    lat_rad = lat*(np.pi/180) # Convert input latitude to radians
-    beta = 2*omega*np.cos(lat_rad)/radius # Beta factor
-    
-    circum = 2*np.pi*radius*np.cos(lat_rad) # Circumference in meters at input latitude
-    
-    lambda_x = circum/x_wavenumbers # Wavelength in x-direction at input latitude
-    x_num = 2*np.pi/lambda_x
-    
-    lambda_y = 2*np.pi*radius/y_wavenumbers # Wavelength in y-direction at input latitude
-    y_num = 2*np.pi/lambda_y
-    
-    c_phase = (zmzw - (beta/(x_num**2+y_num**2)))
-    # c_group = (zmzw + (beta*(x_num**2-y_num**2))/((x_num**2+y_num**2)**2))
-    
-    # distance = np.cumsum(c_phase*60*60*24)*10e-03 # Convert m/s to m/day = distance travelled in a day
-    # deg_dist = (distance/circum)
-    
-    
-    fig, ax1 = plt.subplots()
-    ax1.plot(x_wavenumbers,color='r',label='Zonal')
-    # ax1.plot(y_wavenumbers,color='b',label='Meridional')
-
-    ax1.set_xlabel('Time [days]')
-    ax1.set_ylabel('Wavenumber')
-    plt.legend()
-    
-    ax2 = ax1.twinx()
-    ax2.plot(zmzw,color='k',label='ZMZW')
-    ax2.set_ylabel('m/s')
-    
-    plt.legend()
-    plt.show()
-    
-    
-    plt.plot(c_phase,color='b',label='Phase vel')
-    plt.title('Rossby wave phase velocity at %sN'%(lat))
+    markers_on = [0, 5, 10, 15]
+    plt.plot(time_axis,c_phase, color='b', label='Phase vel')
+    plt.plot(time_axis, c_phase, 'o', color='r', markevery=markers_on)
+    plt.plot(time_axis, zmzw, color='r', label='ZMZW')
+    plt.plot(time_axis, wave_component, color='r', linestyle='dashed', label='Wave comp')
+    plt.plot(time_axis, longterm_zmzw.data*np.ones_like(zmzw), color='g', label='Longterm ZMZW')
+#    plt.plot(np.array([0,5,10,15]), np.array([c_phase[0], c_phase[5], c_phase[10], c_phase[15]]), 'r' )
+#    plt.plot(np.array([0, 5, 10, 15]),np.array([c_phase[0], c_phase[5], c_phase[10], c_phase[15]]), marker='o', mfc='r')
+    plt.title('Rossby wave phase velocity at %sN'%(lat_deg))
     plt.xlabel('Time [days]')
     plt.ylabel('Velocity [m/s]')
-    plt.legend()
+    plt.legend(fontsize='small')
     plt.show()
     
-    # plt.plot(distance)
-    # plt.title('Path travelled by cyclone at %sN'%(lat))
-    # plt.xlabel('Time [days]')
-    # plt.ylabel('Cumulative distance [km]')
-    # plt.show()
+    plt.plot(time_axis, deg_dist)
+    plt.plot(time_axis, deg_dist,'o', color='r', markevery=markers_on)
+    plt.title('Path travelled by cyclone at %sN'%(lat_deg))
+    plt.xlabel('Time [days]')
+    plt.ylabel('Cumulative distance [deg lon]')
+    plt.show()
     
 
 def hbarotropic(cubes,start=500,end=600,level=8,omega=7.93e-06,radius=716000):

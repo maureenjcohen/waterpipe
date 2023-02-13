@@ -64,9 +64,9 @@ def decomposition(cubes, n=3, start=0, end=120, level=47):
     # Create meshgrid with the spatial dimensions of the Iris cube
     
     fig1, ax1 = plt.subplots(figsize = (10,5)) 
-    q1 = ax1.quiver(X[::n,::n], Y[::n,::n], np.roll(x_wind[level,::n,::n].data, 72, axis=1), np.roll(y_wind[level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=2)
+    q1 = ax1.quiver(X[::n,::n], Y[::n,::n], np.roll(x_wind[level,::n,::n].data, 72, axis=1), np.roll(y_wind[level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=5)
     # Create a quiver plot. The np.roll function moves the cube data so the substellar point is centred.
-    ax1.quiverkey(q1, X=0.9, Y=1.05, U=2, label='25 m/s', labelpos='E', coordinates='axes')
+    ax1.quiverkey(q1, X=0.9, Y=1.05, U=5, label='5 m/s', labelpos='E', coordinates='axes')
     # This creates the key with the arrow size. The value of U, the label string, and the value of scale in the previous line should all match.
     plt.title('Wind Vectors [m/s], h = %s km' %(km_heights[level]))
     plt.xlabel('Longitude')
@@ -90,8 +90,8 @@ def decomposition(cubes, n=3, start=0, end=120, level=47):
     plt.show() 
                 
     fig3, ax3 = plt.subplots(figsize = (10,5)) 
-    q3 = ax3.quiver(X[::n,::n], Y[::n,::n], np.roll(upsi[level,::n,::n].data, 72, axis=1), np.roll(-vpsi[level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=2)
-    ax3.quiverkey(q3, X=0.9, Y=1.05, U=2, label='25 m/s', labelpos='E', coordinates='axes')
+    q3 = ax3.quiver(X[::n,::n], Y[::n,::n], np.roll(upsi[level,::n,::n].data, 72, axis=1), np.roll(-vpsi[level,::n,::n].data, 72, axis=1), angles='xy', scale_units='xy', scale=5)
+    ax3.quiverkey(q3, X=0.9, Y=1.05, U=5, label='5 m/s', labelpos='E', coordinates='axes')
     plt.title('Rotational component of wind [m s-1], h=%s bar, %s km' %(p_heights[level,0,0], km_heights[level]))
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')

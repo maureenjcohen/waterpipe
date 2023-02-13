@@ -14,10 +14,10 @@ from iris.coord_systems import GeogCS
 
 
 plasma = mpl_cm.get_cmap('plasma')
-redblu = mpl_cm.get_cmap('brewer_RdBu_11')
+redblu = mpl_cm.get_cmap('RdBu')
 
 
-def wave_spectrum(cubes,start=270,end=275,nlat=90,nlon=144,level=8,omega=1.19e-05,g=9.12,radius=5797818,lat=73,n=3):  
+def wave_spectrum(cubes,start=500,end=520,nlat=90,nlon=144,level=8,omega=1.19e-05,g=9.12,radius=5797818,lat=73,n=3):  
     
     """ Uses the windspharm package to perform a Helmholtz decomposition on an Iris cube
         Helmholtz composition splits the vector field into its divergent and rotational components
@@ -58,8 +58,7 @@ def wave_spectrum(cubes,start=270,end=275,nlat=90,nlon=144,level=8,omega=1.19e-0
     
     winds = windspharm.iris.VectorWind(x_wind[:,level,:,:],y_wind[:,level,:,:])
     uchi,vchi,upsi,vpsi = winds.helmholtz(truncation=21)
-
-    
+   
     zonal_upsi = upsi.collapsed('longitude', iris.analysis.MEAN)
     zonal_vpsi = vpsi.collapsed('longitude', iris.analysis.MEAN)
     eddy_upsi = upsi - zonal_upsi
@@ -107,22 +106,22 @@ def wave_spectrum(cubes,start=270,end=275,nlat=90,nlon=144,level=8,omega=1.19e-0
         # plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/laso/epsfigs/eddy_rot.eps', format='eps')   
         plt.show()
         
-        fig3,ax3 = plt.subplots(figsize = (8.5,5))
-        im2 = ax3.contourf(rel_vort[time,:,:].data, cmap=plasma)
-        # im = ax2.contourf(xfreqs,yfreqs,psd, cmap=plasma)
-        plt.title('Eddy rotational wind PV, h=%s km, day=%s' %(km_heights[level], start+time))
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
-        fig3.colorbar(im2)
-        plt.show()  
+        # fig3,ax3 = plt.subplots(figsize = (8.5,5))
+        # im2 = ax3.contourf(rel_vort[time,:,:].data, cmap=plasma)
+        # # im = ax2.contourf(xfreqs,yfreqs,psd, cmap=plasma)
+        # plt.title('Eddy rotational wind PV, h=%s km, day=%s' %(km_heights[level], start+time))
+        # plt.xlabel('Longitude')
+        # plt.ylabel('Latitude')
+        # fig3.colorbar(im2)
+        # plt.show()  
         
-        fig2,ax2 = plt.subplots(figsize = (8.5,5))
-        im = ax2.contourf(xfreqs,yfreqs,quadrant[time,:,:], cmap=plasma)
-        # im = ax2.contourf(xfreqs,yfreqs,psd, cmap=plasma)
-        plt.title('Power spectrum of eddy rotational wind PV, h=%s km, day=%s' %(km_heights[level], start+time))
-        plt.xlabel('Zonal wavenumber')
-        plt.ylabel('Meridional wavenumber')
-        fig2.colorbar(im)
-        plt.show()
+        # fig2,ax2 = plt.subplots(figsize = (8.5,5))
+        # im = ax2.contourf(xfreqs,yfreqs,quadrant[time,:,:], cmap=plasma)
+        # # im = ax2.contourf(xfreqs,yfreqs,psd, cmap=plasma)
+        # plt.title('Power spectrum of eddy rotational wind PV, h=%s km, day=%s' %(km_heights[level], start+time))
+        # plt.xlabel('Zonal wavenumber')
+        # plt.ylabel('Meridional wavenumber')
+        # fig2.colorbar(im)
+        # plt.show()
         
     
