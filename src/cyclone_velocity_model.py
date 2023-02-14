@@ -51,8 +51,8 @@ def model_vel(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,omega
     
     lat_deg = int(latitudes[lat]) # Convert input row number to latitude in degrees north
     print(lat_deg)
-    zmzw = x_wind[:,level,lat,0:72].collapsed('longitude',iris.analysis.MEAN)
-    zmzw = longterm_zmzw.data - zmzw.data
+    shortterm_zmzw = x_wind[:,level,lat,0:72].collapsed('longitude',iris.analysis.MEAN)
+    zmzw = shortterm_zmzw.data
     
     lat_rad = lat_deg*(np.pi/180) # Convert input latitude to radians
     beta = 2*omega*np.cos(lat_rad)/radius # Beta factor    
