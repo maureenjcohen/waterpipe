@@ -15,7 +15,7 @@ from matplotlib.colors import TwoSlopeNorm
 from iris.analysis import calculus
 from numpy import unravel_index
 
-period = (505, 525)
+period = (506, 526)
 
 def extract_core(winds, time_slice=-1, level=8):
    
@@ -28,7 +28,8 @@ def extract_core(winds, time_slice=-1, level=8):
     return rv_min
 
 
-def model_rwave(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,omega=1.19e-05,g=9.12,radius=5797818,lat=80,save='no'):
+def model_rwave(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,
+                omega=1.19e-05,g=9.12,radius=5797818,lat=8,meaning=5,save='no'):
     
     
     for cube in cubes:
@@ -42,8 +43,8 @@ def model_rwave(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,ome
         if cube.standard_name =='air_pressure':
             pressure = cube[start:end,:,:,:].copy()           
 
-    time_axis = np.arange(start, end)
-    time_length = np.arange(0, end-start)
+    time_axis = np.arange(start, end-meaning+1)
+    time_length = np.arange(0, time_axis.shape[0])
     
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
     km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
@@ -58,16 +59,17 @@ def model_rwave(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,ome
     core_lons = []
     for time in range(0,rel_vort.shape[0]):
         rossby_core = unravel_index(np.argmax(rel_vort[time,:20,0:72].data, axis=None), rel_vort[time,:20,0:72].shape)
-        print(rossby_core[0], rossby_core[1])
-        print(rel_vort[time,rossby_core[0],rossby_core[1]].data)   
+#        print(rossby_core[0], rossby_core[1])
+#        print(rel_vort[time,rossby_core[0],rossby_core[1]].data)   
         core_lats.append(rossby_core[0])
         core_lons.append(rossby_core[1])
     
 #    lat_deg = [np.abs(int(latitudes[item])) for item in core_lats] # Convert input row number to latitude in degrees north
     lon_deg = [int(longitudes[item]) for item in core_lons]
+    lon_deg_meaned = np.convolve(np.array(lon_deg).flatten(),np.ones(meaning),'valid')/meaning
     
     lat_deg = int(latitudes[lat])*np.ones_like(core_lats)
-    print(lat_deg)
+#    print(lat_deg)
     
     
 #    lt_zmzw = []
@@ -101,15 +103,16 @@ def model_rwave(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,ome
     wave_denom = x_num**2 + (1./np.array(Ld_lat))**2
     wave_component = wave_num/wave_denom
     
-    c_phase = (np.array(zmzw)) - wave_component   
-    zero_ind = np.where(np.diff(np.sign(c_phase)))[0]
+    c_phase = (np.array(zmzw)) - wave_component 
+    c_phase_meaned = np.convolve(c_phase.flatten(),np.ones(meaning),'valid')/meaning
+    zero_ind = np.where(np.diff(np.sign(c_phase_meaned)))[0]
 
     zeroes = []
     for zc in zero_ind:
         t1 = time_length[zc]
         t2 = time_length[zc+1]
-        p1 = c_phase[zc]
-        p2 = c_phase[zc+1]
+        p1 = c_phase_meaned[zc]
+        p2 = c_phase_meaned[zc+1]
         interpolated_zero = t1 + (0-p1)* ((t2-t1)/(p2-p1))
         zeroes.append(interpolated_zero)
                             
@@ -119,16 +122,16 @@ def model_rwave(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,ome
     fig, ax1 = plt.subplots()
     ax1.set_xlabel('Time [days]')
     ax1.set_ylabel('Velocity [m/s]')
-    ax1.plot(time_axis,c_phase, color='b', label='Phase vel')
+    ax1.plot(time_axis,c_phase_meaned, color='b', label='Phase vel')
     ax1.plot([item+start for item in zeroes], np.zeros_like(zeroes), 'o', color='r')
     ax1.tick_params(axis='y', labelcolor='b')
     
     ax2 = ax1.twinx()
-    ax2.set_ylabel('Distance travelled [deg E]')
-    ax2.plot(time_axis, lon_deg, color='k', label='Longitude')
+    ax2.set_ylabel('Longitude [deg E]')
+    ax2.plot(time_axis, lon_deg_meaned, color='k', label='Longitude')
     ax2.tick_params(axis='y', labelcolor='k')
     
-    plt.title('Rossby wave phase velocity and gyre longitude')
+    plt.title('Rossby wave phase velocity lat %s and gyre longitude' %lat_deg[0]) 
     fig.tight_layout()
     plt.show()
     
@@ -146,13 +149,13 @@ def model_rwave(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,ome
 #     plt.legend(fontsize='small')
 #     plt.show()
     
-#     plt.plot(time_axis, lon_deg)
-#     plt.plot([item+500 for item in zeroes], [lon_deg[item] for item in zeroes], 'o', color='r')
-# #    plt.plot(time_axis, lon_deg,'o', color='r', markevery=markers_on)
-#     plt.title('Path travelled by cyclone')
-#     plt.xlabel('Time [days]')
-#     plt.ylabel('Cumulative distance [deg lon]')
-#     plt.show()
+    plt.plot(time_axis, lon_deg_meaned)
+#    plt.plot([item+500 for item in zeroes], [lon_deg[item] for item in zeroes], 'o', color='r')
+#    plt.plot(time_axis, lon_deg,'o', color='r', markevery=markers_on)
+    plt.title('Path travelled by southeast gyre')
+    plt.xlabel('Time [days]')
+    plt.ylabel('Longitude [deg E]')
+    plt.show()
     
     
     return

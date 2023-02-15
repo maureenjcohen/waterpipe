@@ -412,17 +412,20 @@ def calculate_timescales(cubes, stellar_constant=837):
     return ratio
     
 
-def rossby_source(cubes, time_slice=-1, level=0):  
+def rossby_source(cubes, start=0, end=1, level=0):  
             
     for cube in cubes:
         if cube.standard_name == 'x_wind':
-            x_wind = cube.copy()
+            x_wind = cube[start:end,:,:,:].copy()
         if cube.standard_name == 'y_wind':
-            y_wind = cube.copy()
+            y_wind = cube[start:end,:,:,:].copy()
  
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
     
-    winds = windspharm.iris.VectorWind(x_wind,y_wind)
+    mean_x = x_wind.collapsed('time', iris.analysis.MEAN)
+    mean_y = y_wind.collapsed('time', iris.analysis.MEAN)
+    
+    winds = windspharm.iris.VectorWind(mean_x, mean_y)
     
     eta = winds.absolutevorticity()
     div = winds.divergence()
@@ -437,7 +440,7 @@ def rossby_source(cubes, time_slice=-1, level=0):
     print(S)
     
     clevs = [-30,-25,-20,-15,-10,-5,0,5,10,15,20,25,30]
-    iplt.contourf(S[time_slice,level,:,:]*1e11,clevs,cmap=brewer_redblu, extend='both')
+    iplt.contourf(S[level,:,:]*1e11,clevs,cmap=brewer_redblu, extend='both')
     ax = plt.gca()
     ax.gridlines(draw_labels=True)
     plt.colorbar(orientation='horizontal')

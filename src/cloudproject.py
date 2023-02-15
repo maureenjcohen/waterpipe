@@ -139,13 +139,13 @@ def composite(cubes, time_slice=500, nlat=90, nlon=144, nlev=38, level=8, n=4, c
             x_wind = cube[time_slice,:,:,:].copy()
         if cube.standard_name == 'y_wind':
             y_wind = cube[time_slice,:,:,:].copy() 
-        if cube.long_name == 'ice_cloud_volume_fraction_in_atmosphere_layer' and fractype=='volume':
+        if cube.long_name == 'ice_cloud_volume_fraction_in_atmosphere_layer' and fractype=='volume' and cloudtype != 'none':
             ice = cube[time_slice,:,:,:].copy()
-        if cube.long_name == 'liquid_cloud_volume_fraction_in_atmosphere_layer' and fractype=='volume':
+        if cube.long_name == 'liquid_cloud_volume_fraction_in_atmosphere_layer' and fractype=='volume' and cloudtype != 'none':
             liq = cube[time_slice,:,:,:].copy()
-        if cube.standard_name == 'mass_fraction_of_cloud_ice_in_air' and fractype=='mass':
+        if cube.standard_name == 'mass_fraction_of_cloud_ice_in_air' and fractype=='mass' and cloudtype != 'none':
             ice = cube[time_slice,:,:,:].copy()
-        if cube.standard_name == 'mass_fraction_of_cloud_liquid_water_in_air' and fractype=='mass':
+        if cube.standard_name == 'mass_fraction_of_cloud_liquid_water_in_air' and fractype=='mass' and cloudtype != 'none':
             liq = cube[time_slice,:,:,:].copy()
             
         
@@ -917,13 +917,14 @@ def hovmoeller_rwaves(cubes, start=0,end=100,level=8,lats=(55,85),title='trap',s
     band_mean = band_mean.data
     
     plt.subplots(figsize=(8,6))
-    plt.contourf(np.arange(-lons, lons), time_axis, np.roll(band_mean, 72, axis=1), cmap=redblu, norm=TwoSlopeNorm(0))
+    plt.contourf(np.arange(-lons, lons), time_axis, np.roll(band_mean, 72, axis=1), levels=np.arange(-60, 61, 10), cmap=redblu, norm=TwoSlopeNorm(0))
     plt.title('Mean meridional wind from %s to %s N' %(lats[0],lats[1]))
     plt.xlabel('Longitude [degrees]')
     plt.ylabel('Time [days]')
     plt.xticks((-72, -48, -24, 0, 24, 48, 72), ('180W',
                  '120W', '60W', '0', '60E', '120E', '180E'))
     cbar = plt.colorbar(pad=0.1)
+    cbar.set_ticks(np.arange(-60, 61, 10))
     cbar.ax.set_title('m/s')
     
     if save == 'yes':

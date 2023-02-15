@@ -49,7 +49,7 @@ def model_vel(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,omega
     winds = windspharm.iris.VectorWind(x_wind[:,level,:,:],y_wind[:,level,:,:])
     # Create a VectorWind data object from the x and y wind cubes
     
-    lat_deg = int(latitudes[lat]) # Convert input row number to latitude in degrees north
+    lat_deg = int(latitudes[lat]) # Convert input row number to latitude in degrees
     print(lat_deg)
     shortterm_zmzw = x_wind[:,level,lat,0:72].collapsed('longitude',iris.analysis.MEAN)
     zmzw = shortterm_zmzw.data

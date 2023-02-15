@@ -102,7 +102,7 @@ def plot_vorts(cubes, time_slice=-1, level=8, omega=1.19e-05, g=9.12, lat=50):
     plt.figure(figsize=(8,5))
     plt.contourf(np.arange(-longitudes/2, longitudes/2), np.arange(-latitudes/2, latitudes/2),
                  np.roll(rel_vort[level,:,:,].data*r_constant, 72, axis=1),levels=rcolor_levs, cmap=redblu, norm=TwoSlopeNorm(0))
-    plt.title('Relative Vorticity, h = %s km' %(heights[level]))
+    plt.title('Relative Vorticity, h=%s km, day=%s' %(heights[level], time_slice))
     plt.xlabel('Longitude [degrees]')
     plt.ylabel('Latitude [degrees]')
     plt.xticks((-72, -60, -48, -36, -24, -12, 0, 12, 24, 36, 48, 60, 72), ('180W', '150W',
