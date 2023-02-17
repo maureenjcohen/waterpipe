@@ -87,12 +87,15 @@ def plot_vorts(cubes, time_slice=-1, level=8, omega=1.19e-05, g=9.12, lat=50):
     # rel_vort = eddies.vorticity()
 
     rel_vort = winds.vorticity()
+    rel_vort = np.flip(rel_vort.data,axis=1)
+    # rel_vort = rel_vort.data
+    
 #    abs_vort = winds.absolutevorticity()
     # Calculate relative and absolute vorticity
     
-    f = np.full_like(rel_vort, f_constant) 
+    # f = np.full_like(rel_vort, f_constant) 
     # Make an array of f to add to relative vorticity
-    pot_vort = -g*(rel_vort[0:-1,:,:].data + f)*dth_dp.data
+    # pot_vort = -g*(rel_vort[0:-1,:,:] + f)*dth_dp.data
     # Calculate potential vorticity
     
     # Can quickly look at relative and absolute vorticity below if you want
@@ -101,7 +104,8 @@ def plot_vorts(cubes, time_slice=-1, level=8, omega=1.19e-05, g=9.12, lat=50):
     rexponent = -5
     plt.figure(figsize=(8,5))
     plt.contourf(np.arange(-longitudes/2, longitudes/2), np.arange(-latitudes/2, latitudes/2),
-                 np.roll(rel_vort[level,:,:,].data*r_constant, 72, axis=1),levels=rcolor_levs, cmap=redblu, norm=TwoSlopeNorm(0))
+                 np.roll(rel_vort[level,:,:,]*r_constant, 72, axis=1),levels=rcolor_levs, cmap=redblu, norm=TwoSlopeNorm(0))
+    # plt.gca().invert_yaxis()
     plt.title('Relative Vorticity, h=%s km, day=%s' %(heights[level], time_slice))
     plt.xlabel('Longitude [degrees]')
     plt.ylabel('Latitude [degrees]')
@@ -115,10 +119,10 @@ def plot_vorts(cubes, time_slice=-1, level=8, omega=1.19e-05, g=9.12, lat=50):
     plt.show()
     
     
-    rv_min = unravel_index(np.argmax(rel_vort[level,:20,0:72].data, axis=None), rel_vort[level,:20,0:72].shape)
-    print(rv_min[0], rv_min[1])
-    print(x_wind.coord('latitude').points[rv_min[0]], x_wind.coord('longitude').points[rv_min[1]])
-    print(rel_vort[level,rv_min[0],rv_min[1]].data)
+    rv_min = unravel_index(np.argmax(rel_vort[level,70:,0:72], axis=None), rel_vort[level,70:,0:72].shape)
+    print(rv_min[0]+70, rv_min[1])
+    print(x_wind.coord('latitude').points[rv_min[0]+70], x_wind.coord('longitude').points[rv_min[1]])
+    print(rel_vort[level,rv_min[0]+70,rv_min[1]])
     
     # iplt.contourf(abs_vort[level,:,:], redblu.N, cmap=redblu, norm=TwoSlopeNorm(0))
     # plt.title('Absolute Vorticity, h = %s km' %(heights[level]), y=1.20)
