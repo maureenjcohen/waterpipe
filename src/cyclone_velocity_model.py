@@ -40,7 +40,7 @@ def model_vel(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,omega
     time_axis = np.arange(start, end)
     
     longterm_zmzw = longterm_x_wind[:,level,lat,0:72].collapsed(['longitude','time'], iris.analysis.MEAN)
-    print(longterm_zmzw.data)
+    longterm_zmzw = longterm_zmzw.data
     
     y_wind = y_wind.regrid(x_wind, iris.analysis.Linear())
     km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
@@ -63,11 +63,11 @@ def model_vel(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,omega
     bv_freq = np.mean(np.sqrt(np.abs((g/theta[:,:-1,:,:].data)*d_theta.data)), axis=-1)
     Ld = (bv_freq[:,level,lat]*6800)/(2*omega*np.sin(lat_rad))
     
-    wave_num = beta + zmzw*((1./Ld)**2)
+    wave_num = beta + (zmzw - longterm_zmzw)*((1./Ld)**2)
     wave_denom = x_num**2 + (1./Ld)**2
     wave_component = wave_num/wave_denom
     
-    c_phase = zmzw - wave_component                               
+    c_phase = (zmzw - longterm_zmzw) - wave_component                               
     cphase_list.append(c_phase)
     c_phase_h = (zmzw - (beta/(x_num**2))) 
     cphase_hlist.append(c_phase_h)
@@ -79,8 +79,8 @@ def model_vel(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,omega
     
     markers_on = [0, 5, 10, 15]
     plt.plot(time_axis,c_phase, color='b', label='Phase vel')
-    plt.plot(time_axis, c_phase, 'o', color='r', markevery=markers_on)
-    plt.plot(time_axis, zmzw, color='r', label='ZMZW')
+#    plt.plot(time_axis, c_phase, 'o', color='r', markevery=markers_on)
+    plt.plot(time_axis, zmzw - longterm_zmzw, color='r', label='ZMZW')
     plt.plot(time_axis, wave_component, color='r', linestyle='dashed', label='Wave comp')
     plt.plot(time_axis, longterm_zmzw.data*np.ones_like(zmzw), color='g', label='Longterm ZMZW')
 #    plt.plot(np.array([0,5,10,15]), np.array([c_phase[0], c_phase[5], c_phase[10], c_phase[15]]), 'r' )
@@ -92,7 +92,7 @@ def model_vel(cubes,startlon=30,start=218,end=250,nlat=90,nlon=144,level=8,omega
     plt.show()
     
     plt.plot(time_axis, deg_dist)
-    plt.plot(time_axis, deg_dist,'o', color='r', markevery=markers_on)
+#    plt.plot(time_axis, deg_dist,'o', color='r', markevery=markers_on)
     plt.title('Path travelled by cyclone at %sN'%(lat_deg))
     plt.xlabel('Time [days]')
     plt.ylabel('Cumulative distance [deg lon]')

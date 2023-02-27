@@ -776,7 +776,7 @@ def cloud_bubble(cubes,lat=45,lon=72,start=0,end=120,final_height=35, save='no')
     cba = plt.colorbar(plota)
     cba.ax.set_title('$10^{-4}$ kg/kg', size=10)
     if save == 'yes':
-        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/cloud_bubble_lat_%s_prox.eps' %lats[lat], format='eps')
+        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/cloud_bubble_lat_%s_prox.eps' %lats[lat], format='eps', bbox_inches='tight')
     else:
         pass
     plt.show()
@@ -791,7 +791,7 @@ def cloud_bubble(cubes,lat=45,lon=72,start=0,end=120,final_height=35, save='no')
     cbb.ax.set_title('$10^{-4}$ kg/kg', size=10)
 
     if save == 'yes':
-        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/cloud_bubble_lon_%s_prox.eps' %lons[lon], format='eps')
+        plt.savefig('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/epsfigs/cloud_bubble_lon_%s_prox.eps' %lons[lon], format='eps', bbox_inches='tight')
     else:
         pass
     plt.show()
