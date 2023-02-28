@@ -77,14 +77,25 @@ def model_rwave(cubes,startlon=30,start=500,end=600,nlat=90,nlon=144,level=8,
     v = y_wind[:,level,lat,0:72].data
     
     lon_deg = []
+    lon_ind = []
     for ytime in range(0,v.shape[0]):   
         y_ind = np.where(np.diff(np.sign(v[ytime,:])) == 2.)[0]       
         print(y_ind, longitudes[y_ind])
         
         if len(y_ind) == 1:
             lon_deg.append(longitudes[y_ind])
+            lon_ind.append(y_ind)
         else:
             lon_deg.append(0)
+            lon_ind.append(0)
+            
+    # u = x_wind[:,level,70:,0:72].data
+    
+    # lat_deg = []
+    # lat_ind = []
+    # for xtime in range(0, u.shape[0]):
+    #     x_ind = np.where(np.diff(np.sign(u[xtime,:,lon_ind[xtime]])) == -2.)[0]
+    #     print(x_ind+70, latitudes[x_ind+70])
     
 #    lon_deg = [longitudes[item] for item in core_lons]
     lon_deg_meaned = np.convolve(np.array(lon_deg).flatten(),np.ones(meaning),'valid')/meaning
@@ -94,6 +105,12 @@ def model_rwave(cubes,startlon=30,start=500,end=600,nlat=90,nlon=144,level=8,
     st_zmzw = shortterm_zmzw.data
     longterm_zmzw = longterm_x_wind[:,level,lat,:].collapsed(['longitude','time'], iris.analysis.MEAN)
     lt_zmzw = longterm_zmzw.data
+    # st_zmzw = []
+    # u = x_wind[:,level,lat,:].data
+    # for xtime in range(0,x_wind.shape[0]):
+    #     local_u = u[xtime,lon_ind[xtime]]
+    #     st_zmzw.append(local_u)
+
 
     lat_deg = latitudes[lat]
     lat_rad = np.array(lat_deg)*(np.pi/180) # Convert input latitude to radians
