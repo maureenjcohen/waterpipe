@@ -33,7 +33,7 @@ def extract_core(winds, time_slice=-1, level=8):
 
 
 def model_rwave(cubes,startlon=30,start=500,end=600,nlat=90,nlon=144,level=8,
-                omega=1.19e-05,g=9.12,radius=5797818,lat=80,meaning=5,save='no'):
+                omega=1.19e-05,g=9.12,radius=5797818,lat=80,meaning=3,save='no'):
     
     
     for cube in cubes:
@@ -54,26 +54,7 @@ def model_rwave(cubes,startlon=30,start=500,end=600,nlat=90,nlon=144,level=8,
     km_heights = np.round(x_wind.coord('level_height').points*1e-03,2)
     latitudes = x_wind.coord('latitude').points
     longitudes = x_wind.coord('longitude').points
-    
-#     winds = windspharm.iris.VectorWind(x_wind[:,level,:,:],y_wind[:,level,:,:])
-#     # Create a VectorWind data object from the x and y wind cubes
-#     rel_vort = winds.vorticity() 
-#     rel_vort = rel_vort.data
-#     print(rel_vort.shape)
-#     rel_vort = np.flip(rel_vort,axis=1)
-    
-#     core_lons = []
-#     for time in range(0,rel_vort.shape[0]):
-#         rossby_core = unravel_index(np.argmax(rel_vort[time,70:,12:72], axis=None), rel_vort[time,70:,12:72].shape)
-#         print(rossby_core[1]+12, longitudes[rossby_core[1]+12])
-#         core_lons.append(rossby_core[1]+12)
-    
-# #    lat_deg = [np.abs(int(latitudes[item])) for item in core_lats] # Convert input row number to latitude in degrees north
-#     lon_deg = [longitudes[item] for item in core_lons]
-#     print(lon_deg)
-#     lon_deg_meaned = np.convolve(np.array(lon_deg).flatten(),np.ones(meaning),'valid')/meaning
-#     lon_diff = np.diff(lon_deg_meaned)
-    
+   
     v = y_wind[:,level,lat,0:72].data
     
     lon_deg = []
@@ -89,27 +70,32 @@ def model_rwave(cubes,startlon=30,start=500,end=600,nlat=90,nlon=144,level=8,
             lon_deg.append(0)
             lon_ind.append(0)
             
-    # u = x_wind[:,level,70:,0:72].data
-    
-    # lat_deg = []
-    # lat_ind = []
-    # for xtime in range(0, u.shape[0]):
-    #     x_ind = np.where(np.diff(np.sign(u[xtime,:,lon_ind[xtime]])) == -2.)[0]
-    #     print(x_ind+70, latitudes[x_ind+70])
-    
-#    lon_deg = [longitudes[item] for item in core_lons]
     lon_deg_meaned = np.convolve(np.array(lon_deg).flatten(),np.ones(meaning),'valid')/meaning
     lon_diff = np.diff(lon_deg_meaned)
     
-    shortterm_zmzw = x_wind[:,level,lat,:].collapsed('longitude',iris.analysis.MEAN)
-    st_zmzw = shortterm_zmzw.data
-    longterm_zmzw = longterm_x_wind[:,level,lat,:].collapsed(['longitude','time'], iris.analysis.MEAN)
-    lt_zmzw = longterm_zmzw.data
-    # st_zmzw = []
-    # u = x_wind[:,level,lat,:].data
-    # for xtime in range(0,x_wind.shape[0]):
-    #     local_u = u[xtime,lon_ind[xtime]]
-    #     st_zmzw.append(local_u)
+    latsx = x_wind.coord('latitude')
+    longs = x_wind.coord('longitude')
+
+    if latsx.bounds == None:
+        x_wind.coord('latitude').guess_bounds()
+    if longs.bounds == None:
+        x_wind.coord('longitude').guess_bounds()
+        
+        
+    latslong = longterm_x_wind.coord('latitude')
+    lonslong = longterm_x_wind.coord('longitude')
+    
+    if latslong.bounds == None:
+        longterm_x_wind.coord('latitude').guess_bounds()
+    if lonslong.bounds == None:
+        longterm_x_wind.coord('longitude').guess_bounds()
+        
+    grid = iris.analysis.cartography.area_weights(x_wind[:,:,:,:])
+    longgrid = iris.analysis.cartography.area_weights(longterm_x_wind[:,:,:,:])   
+    shortterm_zmzw = x_wind[:,:,:,:].collapsed(['longitude','latitude'], iris.analysis.MEAN, weights=grid)
+    st_zmzw = shortterm_zmzw[:,level].data
+    longterm_zmzw = longterm_x_wind[:,:,:,:].collapsed(['longitude','latitude'], iris.analysis.MEAN, weights=longgrid)
+    lt_zmzw = np.mean(longterm_zmzw[:,level].data)
 
 
     lat_deg = latitudes[lat]
@@ -153,14 +139,15 @@ def model_rwave(cubes,startlon=30,start=500,end=600,nlat=90,nlon=144,level=8,
 #    ax1.plot(time_axis[:-1], deriv, color='g', label='Deriv')
     ax1.plot([item+start for item in zeroes], np.zeros_like(zeroes), 'o', color='r')
     ax1.tick_params(axis='y', labelcolor='b')
-    ax1.set_ylim(-30, 30)
+    ax1.set_ylim(-6,-2)
+#    ax1.set_ylim(np.min(c_phase_meaned),np.max(c_phase_meaned))
     
     ax2 = ax1.twinx()
     ax2.set_ylabel('Longitude [deg E]')
-    ax2.plot(time_axis, lon_deg_meaned-85, color='k', label='Longitude')
-    ax2.plot(time_axis, np.ones_like(lon_deg_meaned)*0, color='k', linestyle='dashed')
+    ax2.plot(time_axis, lon_deg_meaned, color='k', label='Longitude')
+    ax2.plot(time_axis, np.ones_like(lon_deg_meaned)*85, color='k', linestyle='dashed')
     ax2.tick_params(axis='y', labelcolor='k')
-    ax2.set_ylim(-85,85)
+    ax2.set_ylim(0,170)
     
     plt.title('Rossby wave phase velocity lat %s and gyre longitude' %lat_deg) 
     fig.tight_layout()
