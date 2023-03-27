@@ -16,9 +16,9 @@ from matplotlib.colors import TwoSlopeNorm
 import numpy as np
 from numpy import unravel_index
 import scipy as sp
-import windspharm
+#import windspharm
 from iris.analysis import calculus
-#import pandas as pd
+import pandas as pd
 
 redblu = mpl_cm.get_cmap('coolwarm')
 plasma = mpl_cm.get_cmap('plasma')
@@ -984,7 +984,7 @@ def rossby_no(datalist, ndata=4, lat=60):
     rno_df.to_csv('/exports/csce/datastore/geos/users/s1144983/papers/cloudproject/rnos.csv')
 
     
-def temp_gradient(datalist,start=0, end=300, ndata=4,lats=(45,90),level=(8,9)):
+def temp_gradient(datalist,start=0, end=600, ndata=4,lats=(0,90),level=(8,9)):
     
     names = ['Control ProxB',
                 'Warm ProxB','Control TRAP1-e','Warm TRAP1-e']
