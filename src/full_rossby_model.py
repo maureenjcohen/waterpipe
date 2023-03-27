@@ -139,7 +139,7 @@ def model_rwave(cubes,startlon=30,start=500,end=600,nlat=90,nlon=144,level=8,
 #    ax1.plot(time_axis[:-1], deriv, color='g', label='Deriv')
     ax1.plot([item+start for item in zeroes], np.zeros_like(zeroes), 'o', color='r')
     ax1.tick_params(axis='y', labelcolor='b')
-    ax1.set_ylim(-6,-2)
+#    ax1.set_ylim(-6,-2)
 #    ax1.set_ylim(np.min(c_phase_meaned),np.max(c_phase_meaned))
     
     ax2 = ax1.twinx()
@@ -147,7 +147,7 @@ def model_rwave(cubes,startlon=30,start=500,end=600,nlat=90,nlon=144,level=8,
     ax2.plot(time_axis, lon_deg_meaned, color='k', label='Longitude')
     ax2.plot(time_axis, np.ones_like(lon_deg_meaned)*85, color='k', linestyle='dashed')
     ax2.tick_params(axis='y', labelcolor='k')
-    ax2.set_ylim(0,170)
+ #   ax2.set_ylim(0,170)
     
     plt.title('Rossby wave phase velocity lat %s and gyre longitude' %lat_deg) 
     fig.tight_layout()
